@@ -2,6 +2,9 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import sun.rmi.runtime.Log;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
@@ -12,6 +15,7 @@ import static spark.Spark.*;
 
 public class Main {
 
+    private static Logger logger = LoggerFactory.getLogger(Main.class);
 
     public static void main(String[] args) {
 
@@ -56,6 +60,7 @@ public class Main {
 
     public static JSONObject lookup(String id) throws IOException {
         BufferedReader csvReader = new BufferedReader(new FileReader("inventory.csv"));
+        logger.info("look up for id"+ id);
         String row;
         boolean contains = false;
         JSONObject ob1 = new JSONObject();
