@@ -25,6 +25,9 @@ public class Main {
             return search(req.params(":topic"));
         });
         get("/lookup/:id", (req,res)->{
+            logger.info("look up for id");
+            logger.info("id"+req.params(":id"));
+
             return lookup(req.params(":id"));
         });
         get("/buy/:topic", (req,res)->{
