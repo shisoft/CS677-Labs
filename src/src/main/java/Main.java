@@ -14,8 +14,8 @@ public class Main {
 
 
     public static void main(String[] args) {
-     
 
+        port(34843);
 //todo log
         get("/search/:topic", (req,res)->{
             return search(req.params(":topic"));

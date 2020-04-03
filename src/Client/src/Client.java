@@ -23,7 +23,7 @@ public class Client {
                     lastline = lastline.replace(" ","-");
 
                     HttpRequest request = HttpRequest.newBuilder()
-                            .uri(URI.create("http://0.0.0.0:4567/search/"+lastline))
+                            .uri(URI.create("http://0.0.0.0:34843/search/"+lastline))
                             .build();
 
                     HttpResponse<String> response = client.send(request,
@@ -37,7 +37,7 @@ public class Client {
                     System.out.println("What is the item number?");
                     lastline = in.nextLine().toLowerCase();
                     HttpRequest requestlook = HttpRequest.newBuilder()
-                            .uri(URI.create("http://0.0.0.0:4567/lookup/"+lastline))
+                            .uri(URI.create("http://0.0.0.0:34843/lookup/"+lastline))
                             .build();
 
                     HttpResponse<String> responselook = client.send(requestlook,
@@ -50,7 +50,7 @@ public class Client {
                     System.out.println("What is the item number?");
                     lastline = in.nextLine().toLowerCase();
                     HttpRequest requestbuy = HttpRequest.newBuilder()
-                            .uri(URI.create("http://0.0.0.0:4567/buy/"+lastline))
+                            .uri(URI.create("http://0.0.0.0:34843/buy/"+lastline))
                             .build();
 
                     HttpResponse<String> responsebuy = client.send(requestbuy,
