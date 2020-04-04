@@ -62,7 +62,8 @@ public class Main {
 
 
     public static JSONObject lookup(String id) throws IOException {
-        BufferedReader csvReader = new BufferedReader(new FileReader("inventory.csv"));
+
+        BufferedReader csvReader = new BufferedReader(new FileReader("../inventory.csv"));
         logger.info("look up for id"+ id);
         String row;
         boolean contains = false;
