@@ -13,16 +13,6 @@ public class Client {
     public static void main(String[] args) throws IOException, InterruptedException {
         Scanner in = new Scanner(System.in);
         String lastline = "null";
-      // URL yahoo = new URL("http://www.yahoo.com/");
-//        URLConnection yc = yahoo.openConnection();
-//        BufferedReader in = new BufferedReader(
-//                new InputStreamReader(
-//                        yc.getInputStream()));
-//        String inputLine;
-//
-//        while ((inputLine = in.readLine()) != null)
-//            System.out.println(inputLine);
-//        in.close();
 
         while(!lastline.toLowerCase().equals("quit")){
             System.out.println("Welcome, what would you like to do? search, lookup, buy？type in or indicate by number 1,2,3 or quit");

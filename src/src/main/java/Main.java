@@ -21,6 +21,9 @@ public class Main {
 
         port(34843);
 //todo log
+        //todo At the beginning of each run, the Catalog log should
+        // include one or more entries recording the initial state of
+        // the catalog database (e.g. how many books were intially inserted)
         get("/search/:topic", (req,res)->{
             return search(req.params(":topic"));
         });
@@ -39,6 +42,7 @@ public class Main {
 
     }
     public static JSONObject search(String topic) throws IOException {
+        //todo sql
         topic = topic.replace("-"," ");
 
         BufferedReader csvReader = new BufferedReader(new FileReader("inventory.csv"));
@@ -62,6 +66,7 @@ public class Main {
 
 
     public static JSONObject lookup(String id) throws IOException {
+        //todo sql
 
         BufferedReader csvReader = new BufferedReader(new FileReader("../inventory.csv"));
         logger.info("look up for id"+ id);
