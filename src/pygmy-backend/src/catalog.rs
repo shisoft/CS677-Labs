@@ -18,11 +18,17 @@ use actix_web::web::Json;
 use crate::data::establish_connection;
 use crate::models::{LookupRes, Item, Topic};
 use crate::configs::*;
+use std::collections::HashMap;
+use actix_web::error::ParseError::TooLarge;
 
 lazy_static! {
-    static ref TOPICS: Vec<Topic> = {
+    static ref TOPICS: HashMap<i32, Topic> = {
         use schema::topic::dsl::*;
-        topic.load::<Topic>(&establish_connection()).unwrap()
+        topic.load::<Topic>(&establish_connection())
+        .unwrap()
+        .into_iter()
+        .map(|t| (t.id, t))
+        .collect()
     };
 }
 
@@ -33,6 +39,7 @@ async fn main() -> std::io::Result<()> {
             App::new()
                 .route("/search/{topic}", web::get().to(search_handler))
                 .route("/lookup/{id}", web::get().to(lookup_handler))
+                .route("/lookup", web::get().to(list_all))
                 .route("/update/{id}/stock/deduct/{stock}", web::post().to(update_stock))
         })
         .bind(format!("0.0.0.0:{}", *CAT_SERVER_PORT))?
@@ -43,36 +50,42 @@ async fn main() -> std::io::Result<()> {
 async fn search_handler(req: HttpRequest) -> impl Responder {
     use schema::item::dsl::*;
     let topic_query = req.match_info().get("topic").unwrap_or("");
-    let topic_matched = TOPICS.iter().filter_map(|matching_topic| {
+    let topic_matched = TOPICS.values().filter_map(|matching_topic| {
         if matching_topic.name.to_lowercase().contains(&topic_query.to_lowercase()) {
-            Some(format!("{}", matching_topic.id))
+            Some(matching_topic)
         } else {
             None
         }
-    }).collect::<Vec<String>>();
-    let res = diesel::sql_query(format!(
+    }).collect::<Vec<&Topic>>();
+    let items = diesel::sql_query(format!(
         "SELECT * FROM item WHERE topic IN ({})",
-        topic_matched.join(", ")
+        topic_matched.iter().map(|i| format!("{}", i.id)).collect::<Vec<_>>().join(", ")
     )).load::<Item>(&establish_connection()).unwrap();
+    let mut res = LookupRes::from_lookup::<()>(Ok(items));
+    res.topics = topic_matched.into_iter().cloned().collect();
     HttpResponse::Ok().json(res)
 }
 
 async fn lookup_handler(req: HttpRequest) -> impl Responder {
     use schema::item::dsl::*;
     let item_id: i32 = req.match_info().get("id").unwrap().parse().unwrap();
-    HttpResponse::Ok()
-        .json(item
-            .filter(id.eq(item_id))
-            .get_result::<Item>(&establish_connection())
-            .map(|i| LookupRes {
-                ok: true,
-                result: Some(i)
-            })
-            .unwrap_or_else(|_| LookupRes {
-                ok: false,
-                result: None
-            })
-        )
+    let mut res = LookupRes::from_lookup(
+        item
+        .filter(id.eq(item_id))
+        .get_result::<Item>(&establish_connection())
+    );
+    if res.ok {
+        res.topics = vec![TOPICS[&res.result.as_ref().unwrap().topic].clone()]
+    }
+    HttpResponse::Ok().json(res)
+}
+
+async fn list_all(req: HttpRequest) -> impl Responder {
+    use schema::item::dsl::*;
+    let all = item.load::<Item>(&establish_connection());
+    let mut res = LookupRes::from_lookup(all);
+    res.topics = TOPICS.values().cloned().collect();
+    HttpResponse::Ok().json(res)
 }
 
 async fn update_stock(req: HttpRequest) -> impl Responder {

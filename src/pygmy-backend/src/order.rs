@@ -40,7 +40,7 @@ async fn order_handler(req: HttpRequest) -> impl Responder {
     let order_amount: i32 = query.amount;
     // First query the catalog server for item information and check stock
     let cat_server = format!("http://{}:{}/", *CAT_SERVER_ADDR, *CAT_SERVER_PORT);
-    let cat_lookup: LookupRes =
+    let cat_lookup: LookupRes<Item> =
         reqwest::get(
             &format!("{}/lookup/{}", cat_server, item_id))
             .await.unwrap()

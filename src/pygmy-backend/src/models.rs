@@ -19,16 +19,17 @@ pub struct Order {
     pub total: f32
 }
 
-#[derive(Queryable, Serialize, Deserialize)]
+#[derive(Queryable, Serialize, Deserialize, Clone)]
 pub struct Topic {
     pub id: i32,
     pub name: String
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct LookupRes {
+pub struct LookupRes<T> {
     pub ok: bool,
-    pub result: Option<Item>
+    pub result: Option<T>,
+    pub topics: Vec<Topic>
 }
 
 #[derive(Insertable)]
@@ -37,4 +38,20 @@ pub struct NewOrder {
     pub item: i32,
     pub amount: i32,
     pub total: f32
+}
+
+impl <T> LookupRes<T> {
+    pub fn from_lookup<E>(res: Result<T, E>) -> Self {
+        res
+            .map(|i| LookupRes {
+                ok: true,
+                result: Some(i),
+                topics: vec![]
+            })
+            .unwrap_or_else(|_| LookupRes {
+                ok: false,
+                result: None,
+                topics: vec![]
+            })
+    }
 }
