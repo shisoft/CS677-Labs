@@ -23,7 +23,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(||
         {
             App::new()
-                .route("/order/{id}", web::get().to(order_handler))
+                .route("/order/{id}", web::post().to(order_handler))
         })
         .bind(format!("0.0.0.0:{}", *ORDER_SERVER_PORT))?
         .run()
@@ -39,7 +39,7 @@ async fn order_handler(req: HttpRequest) -> impl Responder {
     let query = Query::<QueryFormat>::from_query(req.query_string()).unwrap();
     let order_amount: i32 = query.amount;
     // First query the catalog server for item information and check stock
-    let cat_server = format!("http://{}:{}/", *CAT_SERVER_ADDR, *CAT_SERVER_PORT);
+    let cat_server = format!("http://{}:{}", *CAT_SERVER_ADDR, *CAT_SERVER_PORT);
     let cat_lookup: LookupRes<Item> =
         reqwest::get(
             &format!("{}/lookup/{}", cat_server, item_id))
@@ -63,6 +63,7 @@ async fn order_handler(req: HttpRequest) -> impl Responder {
                         total: lookup_item.price * order_amount as f32
                     })
                     .execute(&conn);
+                return HttpResponse::Ok().json(true);
             }
         }
     }
