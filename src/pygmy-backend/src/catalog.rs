@@ -4,16 +4,20 @@ extern crate diesel;
 extern crate lazy_static;
 extern crate dotenv;
 
+mod data;
+mod models;
+mod schema;
+mod configs;
+
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use dotenv::dotenv;
 use std::env;
 use actix_web::{web, App, HttpRequest, HttpServer, Responder, HttpResponse};
-use crate::models::{Topic, Item};
 use actix_web::web::Json;
-
-pub mod schema;
-pub mod models;
+use crate::data::establish_connection;
+use crate::models::{LookupRes, Item, Topic};
+use crate::configs::*;
 
 lazy_static! {
     static ref TOPICS: Vec<Topic> = {
@@ -31,7 +35,7 @@ async fn main() -> std::io::Result<()> {
                 .route("/lookup/{id}", web::get().to(lookup_handler))
                 .route("/update/{id}/stock/deduct/{stock}", web::post().to(update_stock))
         })
-        .bind("127.0.0.1:8000")?
+        .bind(format!("0.0.0.0:{}", *CAT_SERVER_PORT))?
         .run()
         .await
 }
@@ -58,9 +62,16 @@ async fn lookup_handler(req: HttpRequest) -> impl Responder {
     let item_id: i32 = req.match_info().get("id").unwrap().parse().unwrap();
     HttpResponse::Ok()
         .json(item
-                .filter(id.eq(item_id))
-                .load::<Item>(&establish_connection())
-                .unwrap()
+            .filter(id.eq(item_id))
+            .get_result::<Item>(&establish_connection())
+            .map(|i| LookupRes {
+                ok: true,
+                result: Some(i)
+            })
+            .unwrap_or_else(|_| LookupRes {
+                ok: false,
+                result: None
+            })
         )
 }
 
@@ -68,18 +79,20 @@ async fn update_stock(req: HttpRequest) -> impl Responder {
     use schema::item::dsl::*;
     let item_id: i32 = req.match_info().get("id").unwrap().parse().unwrap();
     let stock_deduct: i32 = req.match_info().get("stock").unwrap().parse().unwrap();
-    diesel::update(item).filter(id.eq(item_id)).set(stock.eq(stock - stock_deduct));
-    HttpResponse::Ok().json(())
+    let conn = establish_connection();
+    let txn_res: Result<_, diesel::result::Error> = conn.transaction(|| {
+        if let Ok(i) = item.filter(id.eq(item_id)).get_result::<Item>(&conn) {
+            if i.stock >= stock_deduct {
+                diesel::update(item)
+                    .filter(id.eq(item_id))
+                    .set(stock.eq(i.stock - stock_deduct))
+                    .execute(&conn);
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    });
+    HttpResponse::Ok().json(txn_res.unwrap())
 }
-
-pub fn establish_connection() -> SqliteConnection {
-    dotenv().ok();
-
-    let database_url = env::var("DATABASE_URL")
-        .expect("DATABASE_URL must be set");
-    SqliteConnection::establish(&database_url)
-        .expect(&format!("Error connecting to {}", database_url))
-}
-
 
 

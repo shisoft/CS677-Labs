@@ -5,7 +5,7 @@ create table "order"
             primary key autoincrement,
     item integer not null,
     amount integer not null,
-    total integer not null
+    total float not null
 );
 
 create unique index order_id_uindex

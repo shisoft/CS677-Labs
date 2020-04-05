@@ -13,7 +13,7 @@ table! {
         id -> Integer,
         item -> Integer,
         amount -> Integer,
-        total -> Integer,
+        total -> Float,
     }
 }
 
