@@ -12,6 +12,7 @@ use crate::data::establish_connection;
 use crate::models::{Topic, Item, LookupRes, Order, NewOrder};
 use serde::{Serialize, Deserialize};
 use crate::configs::*;
+use dotenv::dotenv;
 
 mod data;
 mod models;
@@ -20,6 +21,7 @@ mod configs;
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
+    dotenv().ok();
     HttpServer::new(||
         {
             App::new()

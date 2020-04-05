@@ -34,6 +34,7 @@ lazy_static! {
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
+    dotenv().ok();
     HttpServer::new(||
         {
             App::new()
