@@ -38,7 +38,16 @@ async fn main() -> io::Result<()> {
                     wait_for_return_key();
                 },
                 3 => {
-
+                    println!("Which book do you want to look at? Input the number: ");
+                    let mut str_in = String::new();
+                    io::stdin().read_line(&mut str_in).unwrap();
+                    let item_id = str_in.trim();
+                    if let Ok(id) = item_id.parse() {
+                        lookup_one(server, id).await
+                    } else {
+                        println!("Don't know what is that book, please try again");
+                    }
+                    wait_for_return_key();
                 },
                 4 => {
 
@@ -77,6 +86,24 @@ async fn query_list(addr: &String) {
     let topics = topic_map(&lookup);
     for item in lookup.result.as_ref().unwrap() {
         pretty_print_item(item, &topics);
+    }
+    if lookup.result.as_ref().unwrap().is_empty() {
+        println!("Noting to show about that");
+    }
+}
+
+async fn lookup_one(server: &String, id: i32) {
+    let lookup: LookupRes<Item> = reqwest::get(&format!("{}/lookup/{}", server, id))
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    if !lookup.ok {
+        println!("Cannot find the book");
+    } else {
+        let topics = topic_map(&lookup);
+        pretty_print_item(lookup.result.as_ref().unwrap(), &topics);
     }
 }
 
