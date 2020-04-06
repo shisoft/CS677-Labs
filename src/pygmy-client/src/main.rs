@@ -48,10 +48,16 @@ async fn main() -> io::Result<()> {
                     list_all_books(server).await;
                     println!("Which book would you like: ");
                     if let Some(item_id) = read_num() {
-
+                        println!("amount: ");
+                        if let Some(amount) = read_num() {
+                            buy_book(server, item_id, amount).await
+                        } else {
+                            println!("Please input a number for amount");
+                        }
                     } else {
                         println!("Don't know what is that book, please try again with a number");
                     }
+                    wait_for_return_key();
                 },
                 5 => {
                     println!("You want to leave. Bye bye.");
