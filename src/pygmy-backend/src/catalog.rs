@@ -4,24 +4,24 @@ extern crate diesel;
 extern crate lazy_static;
 extern crate dotenv;
 
+mod configs;
 mod data;
 mod models;
 mod schema;
-mod configs;
 
+use crate::configs::*;
+use crate::data::establish_connection;
+use crate::models::{Item, LookupRes, Topic};
+use actix_web::error::ParseError::TooLarge;
+use actix_web::middleware::Logger;
+use actix_web::web::Json;
+use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use dotenv::dotenv;
-use std::env;
-use actix_web::{web, App, HttpRequest, HttpServer, Responder, HttpResponse};
-use actix_web::web::Json;
-use crate::data::establish_connection;
-use crate::models::{LookupRes, Item, Topic};
-use crate::configs::*;
-use std::collections::HashMap;
-use actix_web::error::ParseError::TooLarge;
-use actix_web::middleware::Logger;
 use log::*;
+use std::collections::HashMap;
+use std::env;
 
 lazy_static! {
     // Pre-initialize topics from database
@@ -42,25 +42,27 @@ async fn main() -> std::io::Result<()> {
     dotenv().ok();
     // Initialize logger
     simple_logger::init().unwrap();
-    HttpServer::new(||
-        {
-            App::new()
-                // Setup logging middleware for HTTP server
-                .wrap(Logger::default())
-                // Search route. Topic is a string that does not require exact matching
-                .route("/search/{topic}", web::get().to(search_handler))
-                // Lookup an item with exact item id
-                .route("/lookup/{id}", web::get().to(lookup_handler))
-                // List all items in the database
-                .route("/lookup", web::get().to(list_all))
-                // Update item stock
-                .route("/update/{id}/stock/deduct/{stock}", web::post().to(update_stock))
-        })
-        // Set binding port
-        .bind(format!("0.0.0.0:{}", *CAT_SERVER_PORT))?
-        // Run the server
-        .run()
-        .await
+    HttpServer::new(|| {
+        App::new()
+            // Setup logging middleware for HTTP server
+            .wrap(Logger::default())
+            // Search route. Topic is a string that does not require exact matching
+            .route("/search/{topic}", web::get().to(search_handler))
+            // Lookup an item with exact item id
+            .route("/lookup/{id}", web::get().to(lookup_handler))
+            // List all items in the database
+            .route("/lookup", web::get().to(list_all))
+            // Update item stock
+            .route(
+                "/update/{id}/stock/deduct/{stock}",
+                web::post().to(update_stock),
+            )
+    })
+    // Set binding port
+    .bind(format!("0.0.0.0:{}", *CAT_SERVER_PORT))?
+    // Run the server
+    .run()
+    .await
 }
 
 async fn search_handler(req: HttpRequest) -> impl Responder {
@@ -68,20 +70,33 @@ async fn search_handler(req: HttpRequest) -> impl Responder {
     // Get topic string
     let topic_query = req.match_info().get("topic").unwrap_or("");
     // Extract topics matches query
-    let topic_matched = TOPICS.values().filter_map(|matching_topic| {
-        // By checking the topic lowercase string contains searching string in lowercase
-        if matching_topic.name.to_lowercase().contains(&topic_query.to_lowercase()) {
-            Some(matching_topic)
-        } else {
-            None
-        }
-    }).collect::<Vec<&Topic>>();
+    let topic_matched = TOPICS
+        .values()
+        .filter_map(|matching_topic| {
+            // By checking the topic lowercase string contains searching string in lowercase
+            if matching_topic
+                .name
+                .to_lowercase()
+                .contains(&topic_query.to_lowercase())
+            {
+                Some(matching_topic)
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<&Topic>>();
     // Query by SQL statement, finding items in the matching topics
     // The ORM we are using diesel does not support IN statement for query, we compile it by ourselves
     let items = diesel::sql_query(format!(
         "SELECT * FROM item WHERE topic IN ({})",
-        topic_matched.iter().map(|i| format!("{}", i.id)).collect::<Vec<_>>().join(", ")
-    )).load::<Item>(&establish_connection()).unwrap();
+        topic_matched
+            .iter()
+            .map(|i| format!("{}", i.id))
+            .collect::<Vec<_>>()
+            .join(", ")
+    ))
+    .load::<Item>(&establish_connection())
+    .unwrap();
     // Compose a structure indicates the status of the result
     let mut res = LookupRes::from_lookup::<()>(Ok(items));
     // Provide topic name and it as one of the field in result because topic in item is topic id
@@ -97,9 +112,8 @@ async fn lookup_handler(req: HttpRequest) -> impl Responder {
     let mut res = LookupRes::from_lookup(
         // Get the item from database by its id
         // Using diesel query DSL
-        item
-        .filter(id.eq(item_id))
-        .get_result::<Item>(&establish_connection())
+        item.filter(id.eq(item_id))
+            .get_result::<Item>(&establish_connection()),
     );
     // Check if we can find the item. If yes, attach the topic information
     if res.ok {
@@ -146,5 +160,3 @@ async fn update_stock(req: HttpRequest) -> impl Responder {
     // Return the transaction result
     HttpResponse::Ok().json(txn_res.unwrap())
 }
-
-

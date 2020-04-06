@@ -24,8 +24,4 @@ table! {
     }
 }
 
-allow_tables_to_appear_in_same_query!(
-    item,
-    order,
-    topic,
-);
+allow_tables_to_appear_in_same_query!(item, order, topic,);
