@@ -20,9 +20,7 @@ async fn main() -> io::Result<()> {
         println!("4. Buy a book, for free!!!");
         println!("5. Leave");
         println!("Select by input the number: ");
-        let mut str_in = String::new();
-        io::stdin().read_line(&mut str_in).unwrap();
-        if let Ok(num) = str_in.trim().parse() {
+        if let Some(num) = read_num() {
             match num {
                 1 => {
                     println!("What is the topic? Any keywords in the topics will be fine (try 'sys'):");
@@ -39,18 +37,21 @@ async fn main() -> io::Result<()> {
                 },
                 3 => {
                     println!("Which book do you want to look at? Input the number: ");
-                    let mut str_in = String::new();
-                    io::stdin().read_line(&mut str_in).unwrap();
-                    let item_id = str_in.trim();
-                    if let Ok(id) = item_id.parse() {
+                    if let Some(id) = read_num() {
                         lookup_one(server, id).await
                     } else {
-                        println!("Don't know what is that book, please try again");
+                        println!("Don't know what is that book, please try again with a number");
                     }
                     wait_for_return_key();
                 },
                 4 => {
+                    list_all_books(server).await;
+                    println!("Which book would you like: ");
+                    if let Some(item_id) = read_num() {
 
+                    } else {
+                        println!("Don't know what is that book, please try again with a number");
+                    }
                 },
                 5 => {
                     println!("You want to leave. Bye bye.");
@@ -93,18 +94,39 @@ async fn query_list(addr: &String) {
 }
 
 async fn lookup_one(server: &String, id: i32) {
-    let lookup: LookupRes<Item> = reqwest::get(&format!("{}/lookup/{}", server, id))
-        .await
-        .unwrap()
-        .json()
-        .await
-        .unwrap();
+    let lookup = book_by_id(server, id).await;
     if !lookup.ok {
         println!("Cannot find the book");
     } else {
         let topics = topic_map(&lookup);
         pretty_print_item(lookup.result.as_ref().unwrap(), &topics);
     }
+}
+
+async fn buy_book(server: &String, id: i32, amount: i32) {
+    let book = book_by_id(server, id).await;
+    if !book.ok {
+        println!("Cannot find the book to buy, id {}", id);
+        return;
+    }
+    let success: bool = reqwest::get(&format!("{}/order/{}?amount={}", server, id, amount))
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    if success {
+        println!("Bought book {}, amount {}", book.result.as_ref().unwrap().name, amount);
+    }
+}
+
+async fn book_by_id(server: &String, id: i32) -> LookupRes<Item> {
+    reqwest::get(&format!("{}/lookup/{}", server, id))
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap()
 }
 
 fn topic_map<T>(lookup: &LookupRes<T>) -> HashMap<i32, String> {
@@ -124,4 +146,11 @@ fn pretty_print_item(item: &Item, topics: &HashMap<i32, String>) {
              topics[&item.topic],
              item.stock
     );
+}
+
+fn read_num() -> Option<i32> {
+    let mut str_in = String::new();
+    io::stdin().read_line(&mut str_in).unwrap();
+    let item_id = str_in.trim();
+    item_id.parse().ok()
 }
