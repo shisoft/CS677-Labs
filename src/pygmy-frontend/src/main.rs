@@ -27,11 +27,6 @@ async fn main() -> std::io::Result<()> {
             .route("/lookup/{id}", web::get().to(lookup_handler))
             // List all items in the database
             .route("/lookup", web::get().to(list_all))
-            // Update item stock
-            .route(
-                "/update/{id}/stock/deduct/{stock}",
-                web::post().to(update_stock),
-            )
             // Set route for order server
             .route("/order/{id}", web::post().to(order_handler))
     })
@@ -59,22 +54,6 @@ async fn list_all(req: HttpRequest) -> impl Responder {
     response_with(reqwest::get(&format!("{}/lookup", *CAT_SERVER_ADDR)).await.unwrap().text().await.unwrap())
 }
 
-async fn update_stock(req: HttpRequest) -> impl Responder {
-    let item_id: i32 = req.match_info().get("id").unwrap().parse().unwrap();
-    let stock_deduct: i32 = req.match_info().get("stock").unwrap().parse().unwrap();
-    response_with(
-        reqwest::Client::new()
-            .post(&format!(
-                "{}/update/{}/stock/deduct/{}",
-                *CAT_SERVER_ADDR, item_id, stock_deduct
-            ))
-            .send()
-            .await
-            .unwrap()
-            .text()
-            .await
-            .unwrap())
-}
 
 async fn order_handler(req: HttpRequest) -> impl Responder {
     #[derive(Deserialize)]
@@ -101,8 +80,7 @@ async fn order_handler(req: HttpRequest) -> impl Responder {
 fn response_with(res_text: String) -> impl Responder {
     let mut res = HttpResponse::Ok();
     res.header(header::CONTENT_TYPE, "application/json");
-    res.body(res_text);
-    res
+    res.body(res_text)
 }
 
 
