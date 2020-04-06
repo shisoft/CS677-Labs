@@ -48,7 +48,7 @@ async fn order_handler(req: HttpRequest) -> impl Responder {
     }
     let item_id: i32 = req.match_info().get("id").unwrap().parse().unwrap();
     let query = Query::<QueryFormat>::from_query(req.query_string()).unwrap();
-    let order_amount: i32 = query.amount;
+    let order_amount: i32 = if query.amount > 0 { query.amount } else { 1 };
     info!(
         "Ordering {}, amount {}. Checking stock on catalog server.",
         item_id, order_amount
