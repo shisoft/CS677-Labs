@@ -1,3 +1,5 @@
+// Define all models here for database and data transmission
+
 use serde::{Serialize, Deserialize};
 use crate::schema::{item, order};
 
@@ -25,6 +27,7 @@ pub struct Topic {
     pub name: String
 }
 
+// A generic wrapper for HTTP response, will encode to json and decode at client
 #[derive(Serialize, Deserialize)]
 pub struct LookupRes<T> {
     pub ok: bool,
@@ -32,6 +35,7 @@ pub struct LookupRes<T> {
     pub topics: Vec<Topic>
 }
 
+// New order insert into the database
 #[derive(Insertable)]
 #[table_name = "order"]
 pub struct NewOrder {
@@ -41,6 +45,7 @@ pub struct NewOrder {
 }
 
 impl <T> LookupRes<T> {
+    // Generate the object from generic typed result
     pub fn from_lookup<E>(res: Result<T, E>) -> Self {
         res
             .map(|i| LookupRes {
