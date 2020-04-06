@@ -33,8 +33,8 @@ public class Main {
 
             return lookup(req.params(":id"));
         });
-        get("/buy/:topic", (req,res)->{
-            return "buy, "+ req.params(":id");
+        post("/buy/:topic", (req,res)->{
+            return "buy, "+ req.params(":topic");
         });
 
         get("/hello", (req, res) -> "Hello World");

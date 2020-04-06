@@ -58,8 +58,13 @@ public class Client {
                     lastline = in.nextLine().toLowerCase();
 
 
-                    URL request3 = new URL("http://128.119.243.168:34843/buy/"+lastline);
+                    URL request3 = new URL("http://0.0.0.0:34842/buy/"+lastline);
                     URLConnection yc3 = request3.openConnection();
+
+                    HttpURLConnection http = (HttpURLConnection)yc3;
+                    http.setRequestMethod("POST"); // PUT is another valid option
+                    http.setDoOutput(true);
+
                     BufferedReader r3 = new BufferedReader(new InputStreamReader(
                             yc3.getInputStream()));
 
@@ -68,7 +73,6 @@ public class Client {
                     while ((inputLine3 = r3.readLine()) != null)
                         System.out.println(inputLine3);
                     r3.close();
-
                     break;
                 case "quit":
                     lastline = "quit";
