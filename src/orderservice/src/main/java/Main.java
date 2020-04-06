@@ -38,7 +38,7 @@ public class Main {
 
         URLConnection yc2 = request2.openConnection();
         HttpURLConnection http = (HttpURLConnection)yc2;
-        http.setRequestMethod("POST"); // PUT is another valid option
+        http.setRequestMethod("POST");
         http.setDoOutput(true);
 
         BufferedReader r = new BufferedReader(new InputStreamReader(
