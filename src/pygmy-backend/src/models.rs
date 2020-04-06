@@ -1,7 +1,7 @@
 use serde::{Serialize, Deserialize};
 use crate::schema::{item, order};
 
-#[derive(Queryable, QueryableByName, Serialize, Deserialize)]
+#[derive(Queryable, QueryableByName, Serialize, Deserialize, Debug)]
 #[table_name = "item"]
 pub struct Item {
     pub id: i32,
