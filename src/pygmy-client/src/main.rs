@@ -2,13 +2,16 @@ use std::{env, io};
 use std::process::exit;
 use crate::models::{LookupRes, Item};
 use std::collections::HashMap;
+use std::io::Read;
 
 mod models;
 
-fn main() {
+#[tokio::main]
+async fn main() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
-    let server = argsp[0];
+    let server = &args[1];
     println!("Welcome to Pygmy.com - the World’s smallest book store");
+    println!("Server URL is: {}", server);
     println!("You can");
     loop {
         println!("1. Search books by topic ('Distributed systems' and 'Graduate School')");
@@ -19,13 +22,20 @@ fn main() {
         println!("Select by input the number: ");
         let mut str_in = String::new();
         io::stdin().read_line(&mut str_in).unwrap();
-        if let Ok(num) = str_in.parse() {
+        if let Ok(num) = str_in.trim().parse() {
             match num {
                 1 => {
-
+                    println!("What is the topic? Any keywords in the topics will be fine (try 'sys'):");
+                    let mut str_in = String::new();
+                    io::stdin().read_line(&mut str_in).unwrap();
+                    let topic_kw = str_in.trim();
+                    search_book_by_topic(server, topic_kw).await;
+                    wait_for_return_key();
                 },
                 2 => {
-
+                    list_all_books(server).await;
+                    println!("All books listed.");
+                    wait_for_return_key();
                 },
                 3 => {
 
@@ -49,8 +59,16 @@ fn main() {
     }
 }
 
-fn list_all_books(server: &String) {
-    let lookup: LookupRes<Vec<Item>> = reqwest::get(&format!("{}/lookup", server))
+async fn list_all_books(server: &String) {
+    query_list(&format!("{}/lookup", server)).await
+}
+
+async fn search_book_by_topic(server: &String, topic: &str) {
+    query_list(&format!("{}/search/{}", server, topic)).await
+}
+
+async fn query_list(addr: &String) {
+    let lookup: LookupRes<Vec<Item>> = reqwest::get(addr)
         .await
         .unwrap()
         .json()
@@ -58,16 +76,25 @@ fn list_all_books(server: &String) {
         .unwrap();
     let topics = topic_map(&lookup);
     for item in lookup.result.as_ref().unwrap() {
-        println!("{}. {} - Price: {}, Topic: {}, Stock: {}",
-                 item.id,
-                 item.name,
-                 item.price,
-                 topics[item.topic],
-                 item.stock
-        );
+        pretty_print_item(item, &topics);
     }
 }
 
 fn topic_map<T>(lookup: &LookupRes<T>) -> HashMap<i32, String> {
     lookup.topics.iter().map(|t| (t.id, t.name.clone())).collect()
+}
+
+fn wait_for_return_key() {
+    println!("Press return key to continue");
+    io::stdin().read_line(&mut String::new());
+}
+
+fn pretty_print_item(item: &Item, topics: &HashMap<i32, String>) {
+    println!("{}. {} - Price: {}, Topic: {}, Stock: {}",
+             item.id,
+             item.name,
+             item.price,
+             topics[&item.topic],
+             item.stock
+    );
 }
