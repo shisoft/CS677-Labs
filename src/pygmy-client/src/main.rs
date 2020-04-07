@@ -18,7 +18,8 @@ async fn main() -> io::Result<()> {
         println!("2. Get available book list");
         println!("3. Get information about one book");
         println!("4. Buy a book, for free!!!");
-        println!("5. Leave");
+        println!("5. Test");
+        println!("6. Leave");
         println!("Select by input the number: ");
         if let Some(num) = read_num() {
             match num {
@@ -50,7 +51,7 @@ async fn main() -> io::Result<()> {
                     if let Some(item_id) = read_num() {
                         println!("amount: ");
                         if let Some(amount) = read_num() {
-                            buy_book(server, item_id, amount).await
+                            buy_book(server, item_id, amount).await.unwrap()
                         } else {
                             println!("Please input a number for amount");
                         }
@@ -60,6 +61,11 @@ async fn main() -> io::Result<()> {
                     wait_for_return_key();
                 },
                 5 => {
+                    println!("Run tests to see if everything is working");
+                    test(server).await;
+                    wait_for_return_key();
+                },
+                6 => {
                     println!("You want to leave. Bye bye.");
                     exit(0);
                 },
@@ -75,21 +81,19 @@ async fn main() -> io::Result<()> {
     }
 }
 
-async fn list_all_books(server: &String) {
+async fn list_all_books(server: &String) -> io::Result<LookupRes<Vec<Item>>> {
     query_list(&format!("{}/lookup", server)).await
 }
 
-async fn search_book_by_topic(server: &String, topic: &str) {
+async fn search_book_by_topic(server: &String, topic: &str) -> io::Result<LookupRes<Vec<Item>>> {
     query_list(&format!("{}/search/{}", server, topic)).await
 }
 
-async fn query_list(addr: &String) {
+async fn query_list(addr: &String) -> io::Result<LookupRes<Vec<Item>>> {
     let lookup: LookupRes<Vec<Item>> = reqwest::get(addr)
-        .await
-        .unwrap()
+        .await?
         .json()
-        .await
-        .unwrap();
+        .await?;
     let topics = topic_map(&lookup);
     for item in lookup.result.as_ref().unwrap() {
         pretty_print_item(item, &topics);
@@ -97,10 +101,11 @@ async fn query_list(addr: &String) {
     if lookup.result.as_ref().unwrap().is_empty() {
         println!("Noting to show about that");
     }
+    Ok(lookup)
 }
 
 async fn lookup_one(server: &String, id: i32) {
-    let lookup = book_by_id(server, id).await;
+    let lookup = book_by_id(server, id).await.unwrap();
     if !lookup.ok {
         println!("Cannot find the book");
     } else {
@@ -109,30 +114,86 @@ async fn lookup_one(server: &String, id: i32) {
     }
 }
 
-async fn buy_book(server: &String, id: i32, amount: i32) {
-    let book = book_by_id(server, id).await;
+async fn buy_book(server: &String, id: i32, amount: i32) -> io::Result<bool> {
+    let book = book_by_id(server, id).await.unwrap();
     if !book.ok {
         println!("Cannot find the book to buy, id {}", id);
-        return;
+        return Ok(false);
     }
     let success: bool = reqwest::get(&format!("{}/order/{}?amount={}", server, id, amount))
-        .await
-        .unwrap()
+        .await?
         .json()
-        .await
-        .unwrap();
+        .await?;
     if success {
         println!("Bought book {}, amount {}", book.result.as_ref().unwrap().name, amount);
     }
+    Ok(success)
 }
 
-async fn book_by_id(server: &String, id: i32) -> LookupRes<Item> {
+async fn book_by_id(server: &String, id: i32) -> io::Result<LookupRes<Item>> {
     reqwest::get(&format!("{}/lookup/{}", server, id))
-        .await
-        .unwrap()
+        .await?
         .json()
-        .await
-        .unwrap()
+        .await?
+}
+
+async fn test(server: &String) {
+    let num_tests = 5;
+    println!("Running test 1 of {}", num_tests);
+    print!("Getting all books in store and verify the number...");
+    let lookup = list_all_books(server).await.unwrap();
+    // Response should be ok
+    assert!(lookup.ok);
+    // Should have 4 books
+    assert_eq!(lookup.result.as_ref().unwrap().len(), 4);
+    // Should have 2 topics
+    assert_eq!(lookup.topics.len(), 2);
+    println!("PASSED");
+    println!("Running test 2 of {}", num_tests);
+    let book_1_name = "How to get a good grade in 677 in 20 minutes a day";
+    print!("Get one book, number 1, should be the '{}'...", book_1_name);
+    let book_1 = book_by_id(server, 1).await.unwrap();
+    // Verify response is ok
+    assert!(book_1.ok());
+    // There should be only one topic
+    assert_eq!(book_1.topics.len(), 1);
+    // It should have the right name
+    assert_eq!(book_1.result.unwrap().name, book_1_name);
+    println!("PASSED");
+    println!("Running test 3 of {}", num_tests);
+    println!("Search topic related books 'sys', should support fuzzy matching and match 1 topic and 2 books");
+    let lookup = search_book_by_topic(server, "sys").await.unwrap();
+    // Response should be ok
+    assert!(lookup.ok);
+    // Should have 2 books
+    assert_eq!(lookup.result.as_ref().unwrap().len(), 2);
+    // Should have 1 topic
+    assert_eq!(lookup.topics.len(), 1);
+    println!("PASSED");
+    println!("Running test 4 of {}", num_tests);
+    println!("Buy a book, number 2, amount 1...", num_tests);
+    let book_2 = book_by_id(server, 2).await.unwrap();
+    let item = book_2.result.as_ref().unwrap();
+    assert!(book_2.ok());
+    // There should be only one topic
+    assert_eq!(book_2.topics.len(), 1);
+    // It should have stock. Else, skip
+    if item.stock > 0 {
+        assert!(buy_book(server, 2, 1).await.unwrap());
+        println!("PASSED");
+    } else {
+        println!("Book 2 out of stock, skipped");
+    }
+    println!("Running test 5 of {}", num_tests);
+    println!("Checking remaining stock of book 2...");
+    let book_2_re = book_by_id(server, 2).await.unwrap();
+    let item_re = book_2.result.as_ref().unwrap();
+    assert!(book_2_re.ok());
+    // There should be only one topic
+    assert_eq!(book_2_re.topics.len(), 1);
+    // Check stock
+    assert_eq!(item_re.stock, item.stock - 1);
+    println!("PASSED");
 }
 
 fn topic_map<T>(lookup: &LookupRes<T>) -> HashMap<i32, String> {
