@@ -85,7 +85,7 @@ public class Main {
 
     }
 
-    private static JSONObject  buy(String id) throws IOException {
+    private static String   buy(String id) throws IOException {
         logger.info("Buying "+id);
 
         RandomAccessFile file = new RandomAccessFile("inventory.csv", "rw");
@@ -98,14 +98,13 @@ public class Main {
         String row;
         boolean contains = false;
         String text ="";
-        JSONObject ob = new JSONObject();
+        String re = "";
         while ((row = csvReader.readLine()) != null) {
             String[] data = row.split(",");
             if(data[1].equals(id)){
                 contains=true;
                 text+= data[0]+","+data[1]+","+(Integer.valueOf(data[2])-1)+","+data[3]+","+data[4]+","+"\n";
-                ob.put("name",data[0]);
-                ob.put("stock now",(Integer.valueOf(data[2])-1));
+                re = data[0] +"---"+(Integer.valueOf(data[2])-1);
             }else {
                 text+=row+"\n";
             }
@@ -125,9 +124,9 @@ public class Main {
 
         if (!contains){
             logger.info("doesnt not have "+id);
-            ob.put("message","no book under the topic is found");
+            re="message"+"no book under the topic is found";
         }
-        return ob;
+        return re;
 
     }
 
