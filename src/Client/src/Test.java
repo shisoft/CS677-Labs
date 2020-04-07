@@ -45,13 +45,12 @@ public class Test {
         System.out.println("Test 4: buy one");
         String s4 = buy("1");
         System.out.println(s4);
-        if(s4.contains("9") && s4.contains("RPCs for Dummies") && lookup("1").contains("\"stock\":9")){
+
+        if(s4.contains("9") && s4.contains("How to get a good grade in 677 in 20 minutes a day") ){
             System.out.println("Test 4 PASS");
         }else {
             System.out.println("Test 4 FAIL");
         }
-
-
         System.out.println("Test 5: buy them all");
         buy("2");
         buy("2");
@@ -64,7 +63,9 @@ public class Test {
         buy("2");
         buy("2");
         String s5 = buy("2");
-        if(s5.contains("sold out")){
+        System.out.println(s5);
+
+        if(s5.contains("out of stock")){
             System.out.println("Test 5 PASS");
         }else {
             System.out.println("Test 5 FAIL");
