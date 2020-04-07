@@ -58,7 +58,7 @@ public class Client {
                     lastline = in.nextLine().toLowerCase();
 
 
-                    URL request3 = new URL("http://128.119.243.164:34842/lookup/"+lastline);
+                    URL request3 = new URL("http://128.119.243.168:34843/buy/"+lastline);
                     URLConnection yc3 = request3.openConnection();
 
                     HttpURLConnection http = (HttpURLConnection)yc3;

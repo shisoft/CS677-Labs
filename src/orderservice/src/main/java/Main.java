@@ -48,7 +48,7 @@ public class Main {
             sb.append(inputLine3);
 
         r.close();
-        if (sb.toString().equals("yes")){
+        if (sb.toString().equals("true")){
             URL request3 = new URL("http://128.119.243.164:34842/buy/"+topic);
             URLConnection yc3 = request3.openConnection();
             HttpURLConnection http = (HttpURLConnection)yc3;
@@ -66,7 +66,7 @@ public class Main {
             r1.close();
             return "you bought"+sb1.toString();
         }
-        logger.info("run outt of stock "+sb.toString() );
+        logger.info("run out of stock "+sb.toString() );
 
         return "out of stock";
 
