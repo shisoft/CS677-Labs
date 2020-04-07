@@ -15,6 +15,7 @@ import java.util.logging.Logger;
 import java.io.*;
 import java.util.logging.SimpleFormatter;
 
+import static java.lang.Thread.sleep;
 import static spark.Spark.*;
 
 public class Main {
@@ -85,13 +86,16 @@ public class Main {
 
     }
 
-    private static String   buy(String id) throws IOException {
+    private static String   buy(String id) throws IOException, InterruptedException {
         logger.info("Buying "+id);
 
         RandomAccessFile file = new RandomAccessFile("inventory.csv", "rw");
         FileChannel channel = file.getChannel();
-        FileLock lock = null;
-        lock = channel.lock();
+        FileLock lock = channel.tryLock();
+        while(lock==null){
+            sleep(1000);
+            lock = channel.tryLock();
+        }
 
         BufferedReader csvReader = new BufferedReader(new FileReader("inventory.csv"));
 
