@@ -18,7 +18,6 @@ public class Main {
 
     private final static java.util.logging.Logger logger = Logger.getLogger(Main.class.getName());
     private static FileHandler fh;
-    //private static Logger logger = LoggerFactory.getLogger(Main.class);
 
     public static void main(String[] args) throws IOException {
 
@@ -28,10 +27,6 @@ public class Main {
         fh.setFormatter(formatter);
 
         port(34843);
-//todo log
-        //todo At the beginning of each run, the Catalog log should
-        // include one or more entries recording the initial state of
-        // the catalog database (e.g. how many books were intially inserted)
 
         put("/buy/:topic", (req,res)->{
             logger.info("look " +req.params(":topic"));
@@ -43,7 +38,7 @@ public class Main {
     public static String query(String topic) throws IOException {
 
         URL request2 = new URL("http://128.119.243.164:34842/query/"+topic);
-        logger.info("http.getContent().toString() ");
+        logger.info("making query request");
 
         URLConnection yc2 = request2.openConnection();
 
@@ -58,6 +53,8 @@ public class Main {
 
         r.close();
         if (sb.toString().equals("true")){
+            logger.info("making buying request");
+
             URL request3 = new URL("http://128.119.243.164:34842/buy/"+topic);
             URLConnection yc3 = request3.openConnection();
             HttpURLConnection http = (HttpURLConnection)yc3;
@@ -73,6 +70,8 @@ public class Main {
             while ((inputLine = r1.readLine()) != null)
                 sb1.append(inputLine);
             r1.close();
+            logger.info("Successfully bought"+sb1.toString());
+
             return "you bought"+sb1.toString();
         }
         logger.info("run out of stock "+sb.toString() );
