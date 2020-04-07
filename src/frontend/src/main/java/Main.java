@@ -40,7 +40,7 @@ public class Main {
             logger.info("id"+req.params(":id"));
             return lookup(req.params(":id"));
         });
-        post("/buy/:id", (req,res)->{
+        put("/buy/:id", (req,res)->{
             logger.info("buy");
             logger.info("id"+req.params(":id"));
             return buy(req.params(":id"));
