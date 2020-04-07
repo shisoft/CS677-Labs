@@ -24,7 +24,7 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
 
-        fh = new FileHandler("Catalog.log");
+        fh = new FileHandler("CATALOG.log");
         logger.addHandler(fh);
         SimpleFormatter formatter = new SimpleFormatter();
         fh.setFormatter(formatter);
