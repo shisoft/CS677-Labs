@@ -19,60 +19,19 @@ public class Client {
             switch (in.nextLine().toLowerCase()){
                 case "1":
                 case "search":
-                    System.out.println("What is the topic?");
-                    lastline = in.nextLine().toLowerCase();
-                    lastline = lastline.replace(" ","-");
-
-                    URL request1 = new URL("http://128.119.243.147:34841/search/"+lastline);
-                    URLConnection yc = request1.openConnection();
-                    BufferedReader r1 = new BufferedReader(new InputStreamReader(
-                        yc.getInputStream()));
-
-                    String inputLine;
-
-                    while ((inputLine = r1.readLine()) != null)
-                        System.out.println(inputLine);
-                    r1.close();
+                 search(lastline,in);
                     break;
 
                 case "2":
                 case "lookup":
-                    System.out.println("What is the item number?");
-                    lastline = in.nextLine().toLowerCase();
+                    lookup(lastline,in);
 
-                    URL request2 = new URL("http://128.119.243.147:34841/lookup/"+lastline);
-                    URLConnection yc2 = request2.openConnection();
-                    BufferedReader r2 = new BufferedReader(new InputStreamReader(
-                            yc2.getInputStream()));
-
-                    String inputLine2;
-
-                    while ((inputLine2 = r2.readLine()) != null)
-                        System.out.println(inputLine2);
-                    r2.close();
 
                     break;
                 case "3":
                 case "buy":
-                    System.out.println("What is the item number?");
-                    lastline = in.nextLine().toLowerCase();
+                    buy(lastline,in);
 
-
-                    URL request3 = new URL("http://128.119.243.147:34841/buy/"+lastline);
-                    URLConnection yc3 = request3.openConnection();
-
-                    HttpURLConnection http = (HttpURLConnection)yc3;
-                    http.setRequestMethod("PUT"); // PUT is another valid option
-                    http.setDoOutput(true);
-
-                    BufferedReader r3 = new BufferedReader(new InputStreamReader(
-                            yc3.getInputStream()));
-
-                    String inputLine3;
-
-                    while ((inputLine3 = r3.readLine()) != null)
-                        System.out.println(inputLine3);
-                    r3.close();
                     break;
                 case "quit":
                     lastline = "quit";
@@ -85,5 +44,60 @@ public class Client {
         }
 
 
+    }
+
+    private static void buy(String lastline, Scanner in) throws IOException {
+        System.out.println("What is the item number?");
+        lastline = in.nextLine().toLowerCase();
+
+
+        URL request3 = new URL("http://128.119.243.147:34841/buy/"+lastline);
+        URLConnection yc3 = request3.openConnection();
+
+        HttpURLConnection http = (HttpURLConnection)yc3;
+        http.setRequestMethod("PUT"); // PUT is another valid option
+        http.setDoOutput(true);
+
+        BufferedReader r3 = new BufferedReader(new InputStreamReader(
+                yc3.getInputStream()));
+
+        String inputLine3;
+
+        while ((inputLine3 = r3.readLine()) != null)
+            System.out.println(inputLine3);
+        r3.close();
+    }
+
+    private static void lookup(String lastline, Scanner in) throws IOException {
+        System.out.println("What is the item number?");
+        lastline = in.nextLine().toLowerCase();
+
+        URL request2 = new URL("http://128.119.243.147:34841/lookup/"+lastline);
+        URLConnection yc2 = request2.openConnection();
+        BufferedReader r2 = new BufferedReader(new InputStreamReader(
+                yc2.getInputStream()));
+
+        String inputLine2;
+
+        while ((inputLine2 = r2.readLine()) != null)
+            System.out.println(inputLine2);
+        r2.close();
+    }
+
+    private static void search(String lastline, Scanner in) throws IOException {
+        System.out.println("What is the topic?");
+        lastline = in.nextLine().toLowerCase();
+        lastline = lastline.replace(" ","-");
+
+        URL request1 = new URL("http://128.119.243.147:34841/search/"+lastline);
+        URLConnection yc = request1.openConnection();
+        BufferedReader r1 = new BufferedReader(new InputStreamReader(
+                yc.getInputStream()));
+
+        String inputLine;
+
+        while ((inputLine = r1.readLine()) != null)
+            System.out.println(inputLine);
+        r1.close();
     }
 }

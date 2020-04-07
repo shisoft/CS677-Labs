@@ -74,10 +74,14 @@ public class Main {
 
     private static String  querybuy(String id) throws IOException {
         JSONObject info = lookup(id);
+        if (info.containsKey("message")){
+            return "false";
+        }
         logger.info("stock for "+id+" is "+info.get("stock").toString());
-        if (Integer.parseInt(info.get("stock").toString())>1){
+        if (Integer.parseInt(info.get("stock").toString())>0){
             return "true";
-        } return "false";
+        }
+        return "false";
 
     }
 
