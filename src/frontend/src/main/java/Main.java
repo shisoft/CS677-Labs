@@ -30,11 +30,7 @@ public class Main {
         fh.setFormatter(formatter);
 
         port(34841);
-//todo log
-        //todo At the beginning of each run, the Catalog log should
-        // include one or more entries recording the initial state of
-        // the catalog database (e.g. how many books were intially inserted)
-        get("/search/:topic", (req,res)->{
+         get("/search/:topic", (req,res)->{
             logger.info("search for topic");
             logger.info("topic"+req.params(":topic"));
             return search(req.params(":topic"));
@@ -56,7 +52,7 @@ public class Main {
     private static String lookup(String params) throws IOException {
 
         URL request2 = new URL("http://128.119.243.164:34842/lookup/"+params);
-        logger.info("http.getContent().toString() "+params);
+        logger.info("look up "+params);
         URLConnection yc2 = request2.openConnection();
         BufferedReader r = new BufferedReader(new InputStreamReader(
                 yc2.getInputStream()));
@@ -65,7 +61,7 @@ public class Main {
         while ((inputLine3 = r.readLine()) != null)
             sb.append(inputLine3);
         r.close();
-        logger.info("http.getContent().toString() "+sb.toString() );
+        logger.info("Sever returns: "+sb.toString() );
         return sb.toString();
 
     }
@@ -81,7 +77,7 @@ public class Main {
         while ((inputLine3 = r.readLine()) != null)
             sb.append(inputLine3);
         r.close();
-        logger.info("http.getContent().toString() "+sb.toString() );
+        logger.info("Sever returns: "+sb.toString() );
         return sb.toString();
 
 
@@ -90,7 +86,7 @@ public class Main {
     public static String buy(String pa) throws IOException {
 
         URL request2 = new URL("http://128.119.243.168:34843/buy/"+pa);
-        logger.info("buy "+pa);
+        logger.info("Tring to buy "+pa);
 
         URLConnection yc2 = request2.openConnection();
         HttpURLConnection http = (HttpURLConnection)yc2;
@@ -108,7 +104,7 @@ public class Main {
 
         r.close();
 
-        logger.info("http.getContent().toString() "+sb.toString() );
+        logger.info("Sever returns: "+sb.toString() );
 
         return sb.toString();
 
