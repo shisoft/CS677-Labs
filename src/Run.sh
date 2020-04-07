@@ -11,9 +11,6 @@ echo "CAT_SERVER = '$CATALOG_SERVER:34842'" >> .env
 echo "ORDER_SERVER = '$ORDER_SERVER:34843'" >> .env
 
 
-echo "Reset database"
-ssh -n -f $DEPLOY_USER@$FRONTEND_SERVER "sh -c 'cd $REMOTE_DIR;cp -f OriginalInventory.csv inventory.csv &'"
-
 echo "Running catalog server on $CATALOG_SERVER"
 ssh -n -f $DEPLOY_USER@$CATALOG_SERVER "sh -c 'cd $REMOTE_DIR;kill -9 \$(lsof -t -i:34842);java -jar target/Catalog-1.0-SNAPSHOT-jar-with-dependencies.jar &'"
 
@@ -22,6 +19,10 @@ ssh -n -f $DEPLOY_USER@$FRONTEND_SERVER "sh -c 'cd $REMOTE_DIR;kill -9 \$(lsof -
 
 echo "Running order server on $ORDER_SERVER"
 ssh -n -f $DEPLOY_USER@$ORDER_SERVER "sh -c 'cd $REMOTE_DIR;kill -9 \$(lsof -t -i:34843);java -jar orderservice/target/orderservice-1.0-SNAPSHOT-jar-with-dependencies.jar &'"
+
+echo "Reset database"
+ssh -n -f $DEPLOY_USER@$FRONTEND_SERVER "sh -c 'cd $REMOTE_DIR;cp -f OriginalInventory.csv inventory.csv &'"
+
 
 echo "test"
 eval 'java -jar Client/out/artifacts/Client_jar2/Client.jar'
