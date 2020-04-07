@@ -1,6 +1,6 @@
 # Performance Test
 Here we will test performance in term of response time. In this test, servers are on the same node to avoid influences from hardware. Every endpoint will run 10k times and 2 concurrent threads.
-For microservices, response time really impact performance because a lower level component can really slow down the whole system. From the result we have so far, response time is low enough to complete 10k requests in less than 30 seconds. Note that in average, lower level component have less response time than end-to-end.
+For microservices, response time impact performance because a lower level component can really slow down the whole system. From the result we have so far, response time is low enough to complete 10k requests in less than 30 seconds. Note that in average, lower level component have less response time than end-to-end.
 
 ## End-to-end
 ### /lookup
