@@ -6,6 +6,9 @@ import org.json.simple.parser.ParseException;
 import org.slf4j.LoggerFactory;
 import sun.rmi.runtime.Log;
 
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
+import java.nio.channels.OverlappingFileLockException;
 import java.util.logging.FileHandler;
 import java.util.logging.Logger;
 
@@ -27,7 +30,7 @@ public class Main {
         fh.setFormatter(formatter);
 
         // the following statement is used to log any messages
-        logger.info("My first log");
+        logger.info("Catalog running ");
         port(34842);
 //todo log
         //todo At the beginning of each run, the Catalog log should
@@ -61,7 +64,12 @@ public class Main {
     }
 
     private static JSONObject  buy(String id) throws IOException {
+        logger.info("Buying "+id);
 
+        RandomAccessFile file = new RandomAccessFile("inventory.csv", "rw");
+        FileChannel channel = file.getChannel();
+        FileLock lock = null;
+        lock = channel.lock();
 
         BufferedReader csvReader = new BufferedReader(new FileReader("inventory.csv"));
 
@@ -84,9 +92,16 @@ public class Main {
 
         FileWriter writer = new FileWriter("inventory.csv");
         writer.write(text);
+        logger.info("Writting "+id+"after buy");
         writer.close();
 
+        lock.release();
+
+        file.close();
+        channel.close();
+
         if (!contains){
+            logger.info("doesnt not have "+id);
             ob.put("message","no book under the topic is found");
         }
         return ob;
@@ -94,7 +109,9 @@ public class Main {
     }
 
     public static JSONObject search(String topic) throws IOException {
-        //todo sql
+        logger.info("Searching for "+topic);
+
+
         topic = topic.replace("-"," ");
 
         BufferedReader csvReader = new BufferedReader(new FileReader("inventory.csv"));
