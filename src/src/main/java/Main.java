@@ -26,8 +26,6 @@ public class Main {
         });
         get("/lookup/:id", (req,res)->{
             logger.info("look up for id");
-            logger.info("id"+req.params(":id"));
-
             return lookup(req.params(":id"));
         });
         put("/buy/:id", (req,res)->{
@@ -107,14 +105,18 @@ public class Main {
     }
 
 
-    public static JSONObject lookup(String id) throws IOException {
+    public static JSONObject lookup(String id) {
         //todo sql
 
-        BufferedReader csvReader = new BufferedReader(new FileReader("../inventory.csv"));
-        logger.info("look up for id"+ id);
-        String row;
+        BufferedReader csvReader = null;
         boolean contains = false;
         JSONObject ob1 = new JSONObject();
+
+        try {
+            csvReader = new BufferedReader(new FileReader("inventory.csv"));
+
+        logger.info("look up for id"+ id);
+        String row;
         while ((row = csvReader.readLine()) != null) {
             String[] data = row.split(",");
             if(data[1].equals(id)){
@@ -127,12 +129,18 @@ public class Main {
                 break;
             }
         }
+            csvReader.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
-        csvReader.close();
         if (!contains){
             ob1.put("message","no book under the id is found");
         }
         return ob1;
+
     }
 
 }
