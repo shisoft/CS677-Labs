@@ -2,20 +2,32 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
-import org.slf4j.Logger;
+//import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sun.rmi.runtime.Log;
 
+import java.util.logging.FileHandler;
+import java.util.logging.Logger;
+
 import java.io.*;
+import java.util.logging.SimpleFormatter;
 
 import static spark.Spark.*;
 
 public class Main {
+    private final static Logger logger = Logger.getLogger(Main.class.getName());
+    private static FileHandler fh;
+    //private static Logger logger = LoggerFactory.getLogger(Main.class);
 
-    private static Logger logger = LoggerFactory.getLogger(Main.class);
+    public static void main(String[] args) throws IOException {
 
-    public static void main(String[] args) {
+        fh = new FileHandler("Catalog.log");
+        logger.addHandler(fh);
+        SimpleFormatter formatter = new SimpleFormatter();
+        fh.setFormatter(formatter);
 
+        // the following statement is used to log any messages
+        logger.info("My first log");
         port(34842);
 //todo log
         //todo At the beginning of each run, the Catalog log should
