@@ -5,8 +5,10 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.677lab2.huangshi</groupId>
-    <artifactId>Catalog</artifactId>
+    <artifactId>frontend</artifactId>
     <version>1.0-SNAPSHOT</version>
+
+
     <build>
         <plugins>
             <plugin>
@@ -62,10 +64,16 @@
             <version>1.7.15</version>
         </dependency>
         <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+            <version>1.2.17</version>
+        </dependency>
+        <dependency>
             <groupId>com.googlecode.json-simple</groupId>
             <artifactId>json-simple</artifactId>
             <version>1.1.1</version>
         </dependency>
     </dependencies>
+
 
 </project>

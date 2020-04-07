@@ -6,10 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sun.rmi.runtime.Log;
 
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 
 import static spark.Spark.*;
 
@@ -33,14 +30,59 @@ public class Main {
 
             return lookup(req.params(":id"));
         });
-        post("/buy/:topic", (req,res)->{
-            return "buy, "+ req.params(":topic");
+        put("/buy/:id", (req,res)->{
+            return buy(req.params(":id"));
+        });
+        get("/query/:id", (req,res)->{
+            return querybuy(req.params(":id"));
         });
 
-        get("/hello", (req, res) -> "Hello World");
 
 
     }
+
+    private static String  querybuy(String id) throws IOException {
+        JSONObject info = lookup(id);
+        logger.info("stock is "+info.get("stock").toString());
+        if (Integer.parseInt(info.get("stock").toString())>1){
+            return "true";
+        } return "false";
+
+    }
+
+    private static JSONObject  buy(String id) throws IOException {
+
+
+        BufferedReader csvReader = new BufferedReader(new FileReader("inventory.csv"));
+
+        String row;
+        boolean contains = false;
+        String text ="";
+        JSONObject ob = new JSONObject();
+        while ((row = csvReader.readLine()) != null) {
+            String[] data = row.split(",");
+            if(data[1].equals(id)){
+                contains=true;
+                text+= data[0]+","+data[1]+","+(Integer.valueOf(data[2])-1)+","+data[3]+","+data[4]+","+"\n";
+                ob.put(data[0],(Integer.valueOf(data[2])-1));
+            }else {
+                text+=row+"\n";
+            }
+
+        }
+        csvReader.close();
+
+        FileWriter writer = new FileWriter("inventory.csv");
+        writer.write(text);
+        writer.close();
+
+        if (!contains){
+            ob.put("message","no book under the topic is found");
+        }
+        return ob;
+
+    }
+
     public static JSONObject search(String topic) throws IOException {
         //todo sql
         topic = topic.replace("-"," ");

@@ -18,28 +18,25 @@ public class Main {
 
     public static void main(String[] args) {
 
-        port(34842);
+        port(34843);
 //todo log
         //todo At the beginning of each run, the Catalog log should
         // include one or more entries recording the initial state of
         // the catalog database (e.g. how many books were intially inserted)
 
-        post("/buy/:topic", (req,res)->{
+        put("/buy/:topic", (req,res)->{
             logger.info("look " +req.params(":topic"));
-            return "you bought, "+ query(req.params(":topic"));
+            return  query(req.params(":topic"));
         });
 
 
     }
     public static String query(String topic) throws IOException {
 
-        URL request2 = new URL("http://0.0.0.0:34843/buy/"+topic);
+        URL request2 = new URL("http://128.119.243.164:34842/query/"+topic);
         logger.info("http.getContent().toString() ");
 
         URLConnection yc2 = request2.openConnection();
-        HttpURLConnection http = (HttpURLConnection)yc2;
-        http.setRequestMethod("POST");
-        http.setDoOutput(true);
 
         BufferedReader r = new BufferedReader(new InputStreamReader(
                 yc2.getInputStream()));
@@ -51,10 +48,27 @@ public class Main {
             sb.append(inputLine3);
 
         r.close();
+        if (sb.toString().equals("yes")){
+            URL request3 = new URL("http://128.119.243.164:34842/buy/"+topic);
+            URLConnection yc3 = request3.openConnection();
+            HttpURLConnection http = (HttpURLConnection)yc3;
+            http.setRequestMethod("PUT");
+            http.setDoOutput(true);
 
-        logger.info("http.getContent().toString() "+sb.toString() );
+            BufferedReader r1 = new BufferedReader(new InputStreamReader(
+                    http.getInputStream()));
 
-        return sb.toString();
+            String inputLine;
+            StringBuilder sb1 = new StringBuilder();
+
+            while ((inputLine = r1.readLine()) != null)
+                sb1.append(inputLine);
+            r1.close();
+            return "you bought"+sb1.toString();
+        }
+        logger.info("run outt of stock "+sb.toString() );
+
+        return "out of stock";
 
     }
 

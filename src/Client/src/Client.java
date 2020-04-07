@@ -23,7 +23,7 @@ public class Client {
                     lastline = in.nextLine().toLowerCase();
                     lastline = lastline.replace(" ","-");
 
-                    URL request1 = new URL("http://128.119.243.168:34843/search/"+lastline);
+                    URL request1 = new URL("http://128.119.243.164:34842/search/"+lastline);
                     URLConnection yc = request1.openConnection();
                     BufferedReader r1 = new BufferedReader(new InputStreamReader(
                         yc.getInputStream()));
@@ -40,7 +40,7 @@ public class Client {
                     System.out.println("What is the item number?");
                     lastline = in.nextLine().toLowerCase();
 
-                    URL request2 = new URL("http://128.119.243.168:34843/lookup/"+lastline);
+                    URL request2 = new URL("http://128.119.243.164:34842/lookup/"+lastline);
                     URLConnection yc2 = request2.openConnection();
                     BufferedReader r2 = new BufferedReader(new InputStreamReader(
                             yc2.getInputStream()));
@@ -58,11 +58,11 @@ public class Client {
                     lastline = in.nextLine().toLowerCase();
 
 
-                    URL request3 = new URL("http://0.0.0.0:34842/buy/"+lastline);
+                    URL request3 = new URL("http://128.119.243.164:34842/lookup/"+lastline);
                     URLConnection yc3 = request3.openConnection();
 
                     HttpURLConnection http = (HttpURLConnection)yc3;
-                    http.setRequestMethod("POST"); // PUT is another valid option
+                    http.setRequestMethod("PUT"); // PUT is another valid option
                     http.setDoOutput(true);
 
                     BufferedReader r3 = new BufferedReader(new InputStreamReader(
