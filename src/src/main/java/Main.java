@@ -30,7 +30,9 @@ public class Main {
         fh.setFormatter(formatter);
 
         // the following statement is used to log any messages
+
         logger.info("Catalog running ");
+        setuplog();
         port(34842);
 //todo log
         //todo At the beginning of each run, the Catalog log should
@@ -40,7 +42,6 @@ public class Main {
             return search(req.params(":topic"));
         });
         get("/lookup/:id", (req,res)->{
-            logger.info("look up for id");
             return lookup(req.params(":id"));
         });
         put("/buy/:id", (req,res)->{
@@ -54,9 +55,26 @@ public class Main {
 
     }
 
+    private static void setuplog() throws IOException {
+        logger.info("======================================= ");
+
+        BufferedReader csvReader = new BufferedReader(new FileReader("inventory.csv"));
+        String row;
+        boolean contains = false;
+        JSONObject ob = new JSONObject();
+        while ((row = csvReader.readLine()) != null) {
+            String[] data = row.split(",");
+            logger.info("book id "+data[1]+" has "+data[2]+" in stock");
+        }
+
+        csvReader.close();
+        logger.info("======================================= ");
+
+    }
+
     private static String  querybuy(String id) throws IOException {
         JSONObject info = lookup(id);
-        logger.info("stock is "+info.get("stock").toString());
+        logger.info("stock for "+id+" is "+info.get("stock").toString());
         if (Integer.parseInt(info.get("stock").toString())>1){
             return "true";
         } return "false";
@@ -92,7 +110,7 @@ public class Main {
 
         FileWriter writer = new FileWriter("inventory.csv");
         writer.write(text);
-        logger.info("Writting "+id+"after buy");
+        logger.info("Writting "+id+" after buy");
         writer.close();
 
         lock.release();
