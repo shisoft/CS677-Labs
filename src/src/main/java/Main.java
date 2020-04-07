@@ -100,7 +100,8 @@ public class Main {
             if(data[1].equals(id)){
                 contains=true;
                 text+= data[0]+","+data[1]+","+(Integer.valueOf(data[2])-1)+","+data[3]+","+data[4]+","+"\n";
-                ob.put(data[0],(Integer.valueOf(data[2])-1));
+                ob.put("name",data[0]);
+                ob.put("stock now",(Integer.valueOf(data[2])-1));
             }else {
                 text+=row+"\n";
             }
