@@ -120,7 +120,8 @@ async fn buy_book(server: &String, id: i32, amount: i32) -> Result<bool, reqwest
         println!("Cannot find the book to buy, id {}", id);
         return Ok(false);
     }
-    let success: bool = reqwest::get(&format!("{}/order/{}?amount={}", server, id, amount))
+    let success: bool = reqwest::Client::new().post(&format!("{}/order/{}?amount={}", server, id, amount))
+        .send()
         .await?
         .json()
         .await?;
