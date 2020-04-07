@@ -1,8 +1,4 @@
-import org.json.simple.JSONObject;
-import org.slf4j.LoggerFactory;
-
 import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
@@ -12,7 +8,8 @@ import java.util.logging.FileHandler;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
-import static spark.Spark.*;
+import static spark.Spark.port;
+import static spark.Spark.put;
 
 public class Main {
 
@@ -20,7 +17,7 @@ public class Main {
     private static FileHandler fh;
 
     public static void main(String[] args) throws IOException {
-
+//log set up
         fh = new FileHandler("ORDER.log");
         logger.addHandler(fh);
         SimpleFormatter formatter = new SimpleFormatter();
@@ -37,7 +34,7 @@ public class Main {
 
     }
     public static String query(String topic) throws IOException {
-
+//when a buy is called from front end, it sends a query to catalog to check if a book is available,
         URL request2 = new URL("http://128.119.243.164:34842/query/"+topic);
         logger.info("making query request");
 
@@ -54,6 +51,7 @@ public class Main {
 
         r.close();
         if (sb.toString().equals("true")){
+            //if it is avaliable, then it sends the put request to the buy API call to purchase.
             logger.info("making buying request");
 
             URL request3 = new URL("http://128.119.243.164:34842/buy/"+topic);
@@ -74,7 +72,7 @@ public class Main {
             logger.info("Successfully bought"+sb1.toString());
 
             return sb1.toString();
-        }
+        }//or not it returns out of stock.
         logger.info("run out of stock "+sb.toString() );
 
         return "out of stock";

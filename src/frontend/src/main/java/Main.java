@@ -23,12 +23,12 @@ public class Main {
     //private static Logger logger = LoggerFactory.getLogger(Main.class);
 
     public static void main(String[] args) throws IOException {
-
+//log set up
         fh = new FileHandler("FRONT.log");
         logger.addHandler(fh);
         SimpleFormatter formatter = new SimpleFormatter();
         fh.setFormatter(formatter);
-
+// it takes three client api call two gets and a put.
         port(34841);
          get("/search/:topic", (req,res)->{
             logger.info("search for topic");
@@ -48,7 +48,7 @@ public class Main {
 
 
     }
-
+//Takes in an id or topic as an parameter then make a new connection based on the operation type and sends that to either order server or catalog.it doesn't do much computation just sort them into different address with different ip.
     private static String lookup(String params) throws IOException {
 
         URL request2 = new URL("http://128.119.243.164:34842/lookup/"+params);
