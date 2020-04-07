@@ -51,7 +51,7 @@ async fn main() -> io::Result<()> {
                     if let Some(item_id) = read_num() {
                         println!("amount: ");
                         if let Some(amount) = read_num() {
-                            buy_book(server, item_id, amount).await.unwrap()
+                            buy_book(server, item_id, amount).await.unwrap();
                         } else {
                             println!("Please input a number for amount");
                         }
@@ -81,15 +81,15 @@ async fn main() -> io::Result<()> {
     }
 }
 
-async fn list_all_books(server: &String) -> io::Result<LookupRes<Vec<Item>>> {
+async fn list_all_books(server: &String) -> Result<LookupRes<Vec<Item>>, reqwest::Error> {
     query_list(&format!("{}/lookup", server)).await
 }
 
-async fn search_book_by_topic(server: &String, topic: &str) -> io::Result<LookupRes<Vec<Item>>> {
+async fn search_book_by_topic(server: &String, topic: &str) -> Result<LookupRes<Vec<Item>>, reqwest::Error> {
     query_list(&format!("{}/search/{}", server, topic)).await
 }
 
-async fn query_list(addr: &String) -> io::Result<LookupRes<Vec<Item>>> {
+async fn query_list(addr: &String) -> Result<LookupRes<Vec<Item>>, reqwest::Error> {
     let lookup: LookupRes<Vec<Item>> = reqwest::get(addr)
         .await?
         .json()
@@ -114,7 +114,7 @@ async fn lookup_one(server: &String, id: i32) {
     }
 }
 
-async fn buy_book(server: &String, id: i32, amount: i32) -> io::Result<bool> {
+async fn buy_book(server: &String, id: i32, amount: i32) -> Result<bool, reqwest::Error> {
     let book = book_by_id(server, id).await.unwrap();
     if !book.ok {
         println!("Cannot find the book to buy, id {}", id);
@@ -130,15 +130,15 @@ async fn buy_book(server: &String, id: i32, amount: i32) -> io::Result<bool> {
     Ok(success)
 }
 
-async fn book_by_id(server: &String, id: i32) -> io::Result<LookupRes<Item>> {
+async fn book_by_id(server: &String, id: i32) -> Result<LookupRes<Item>, reqwest::Error> {
     reqwest::get(&format!("{}/lookup/{}", server, id))
         .await?
         .json()
-        .await?
+        .await
 }
 
 async fn test(server: &String) {
-    let num_tests = 5;
+    let num_tests: i32 = 5;
     println!("Running test 1 of {}", num_tests);
     print!("Getting all books in store and verify the number...");
     let lookup = list_all_books(server).await.unwrap();
@@ -154,7 +154,7 @@ async fn test(server: &String) {
     print!("Get one book, number 1, should be the '{}'...", book_1_name);
     let book_1 = book_by_id(server, 1).await.unwrap();
     // Verify response is ok
-    assert!(book_1.ok());
+    assert!(book_1.ok);
     // There should be only one topic
     assert_eq!(book_1.topics.len(), 1);
     // It should have the right name
@@ -171,10 +171,10 @@ async fn test(server: &String) {
     assert_eq!(lookup.topics.len(), 1);
     println!("PASSED");
     println!("Running test 4 of {}", num_tests);
-    println!("Buy a book, number 2, amount 1...", num_tests);
+    println!("Buy a book, number 2, amount 1...");
     let book_2 = book_by_id(server, 2).await.unwrap();
     let item = book_2.result.as_ref().unwrap();
-    assert!(book_2.ok());
+    assert!(book_2.ok);
     // There should be only one topic
     assert_eq!(book_2.topics.len(), 1);
     // It should have stock. Else, skip
@@ -188,7 +188,7 @@ async fn test(server: &String) {
     println!("Checking remaining stock of book 2...");
     let book_2_re = book_by_id(server, 2).await.unwrap();
     let item_re = book_2.result.as_ref().unwrap();
-    assert!(book_2_re.ok());
+    assert!(book_2_re.ok);
     // There should be only one topic
     assert_eq!(book_2_re.topics.len(), 1);
     // Check stock
