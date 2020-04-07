@@ -73,7 +73,7 @@ public class Main {
             r1.close();
             logger.info("Successfully bought"+sb1.toString());
 
-            return "you bought"+sb1.toString();
+            return sb1.toString();
         }
         logger.info("run out of stock "+sb.toString() );
 

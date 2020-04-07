@@ -64,6 +64,9 @@ public class Client {
         String inputLine3;
 
         while ((inputLine3 = r3.readLine()) != null)
+            if(inputLine3.contains("---")){
+                System.out.println("You bought the book: "+inputLine3.replace("---",", the stock is now "));
+            }else
             System.out.println(inputLine3);
         r3.close();
     }
