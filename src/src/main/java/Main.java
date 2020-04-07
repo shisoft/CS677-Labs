@@ -9,6 +9,7 @@ import sun.rmi.runtime.Log;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.FileHandler;
 import java.util.logging.Logger;
 
@@ -31,6 +32,7 @@ public class Main {
         fh.setFormatter(formatter);
 
         // the following statement is used to log any messages
+        AtomicLong ct = new AtomicLong();
 
         logger.info("Catalog running ");
         setuplog();
@@ -40,16 +42,42 @@ public class Main {
         // include one or more entries recording the initial state of
         // the catalog database (e.g. how many books were intially inserted)
         get("/search/:topic", (req,res)->{
-            return search(req.params(":topic"));
+            long startTime = System.currentTimeMillis();
+            logger.info("search for topic");
+            logger.info("topic"+req.params(":topic"));
+            JSONObject re = search(req.params(":topic"));
+            long endTime = System.currentTimeMillis();
+            ct.addAndGet((endTime - startTime));
+            logger.info(ct+"tim!!!!se");
+            return re;
+
         });
         get("/lookup/:id", (req,res)->{
-            return lookup(req.params(":id"));
+            long startTime = System.currentTimeMillis();
+            JSONObject re = lookup(req.params(":id"));
+            long endTime = System.currentTimeMillis();
+            ct.addAndGet((endTime - startTime));
+            logger.info(ct+"tim!!!!se");
+            return re;
+
         });
         put("/buy/:id", (req,res)->{
-            return buy(req.params(":id"));
+            long startTime = System.currentTimeMillis();
+            String re = buy(req.params(":id"));
+            long endTime = System.currentTimeMillis();
+            ct.addAndGet((endTime - startTime));
+            logger.info(ct+"tim!!!!buy");
+            return re;
+
         });
         get("/query/:id", (req,res)->{
-            return querybuy(req.params(":id"));
+            long startTime = System.currentTimeMillis();
+            String re = querybuy(req.params(":id"));
+            long endTime = System.currentTimeMillis();
+            ct.addAndGet((endTime - startTime));
+            logger.info(ct+"tim!!!!query");
+            return re;
+
         });
 
 

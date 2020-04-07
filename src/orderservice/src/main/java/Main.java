@@ -8,6 +8,7 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.FileHandler;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
@@ -26,12 +27,21 @@ public class Main {
         SimpleFormatter formatter = new SimpleFormatter();
         fh.setFormatter(formatter);
         logger.info("Order running ");
+        AtomicLong ct = new AtomicLong();
 
         port(34843);
 
         put("/buy/:topic", (req,res)->{
+            long startTime = System.currentTimeMillis();
             logger.info("look " +req.params(":topic"));
-            return  query(req.params(":topic"));
+
+            String re = query(req.params(":topic"));
+            long endTime = System.currentTimeMillis();
+            ct.addAndGet((endTime - startTime));
+            logger.info(ct+"tim!!!!se");
+            return re;
+
+
         });
 
 

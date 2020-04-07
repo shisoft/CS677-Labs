@@ -1,14 +1,10 @@
-import org.json.simple.JSONObject;
-import org.slf4j.LoggerFactory;
-
 import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.FileHandler;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
@@ -28,22 +24,44 @@ public class Main {
         logger.addHandler(fh);
         SimpleFormatter formatter = new SimpleFormatter();
         fh.setFormatter(formatter);
-
+        AtomicLong ct = new AtomicLong();
         port(34841);
          get("/search/:topic", (req,res)->{
+
+             long startTime = System.currentTimeMillis();
             logger.info("search for topic");
             logger.info("topic"+req.params(":topic"));
-            return search(req.params(":topic"));
-        });
+             String re = search(req.params(":topic"));
+             long endTime = System.currentTimeMillis();
+             ct.addAndGet((endTime - startTime));
+             logger.info(ct+"tim!!!!se");
+             return re;
+
+         });
         get("/lookup/:id", (req,res)->{
+            long startTime = System.currentTimeMillis();
+
             logger.info("look up for id");
             logger.info("id"+req.params(":id"));
-            return lookup(req.params(":id"));
+            String re = lookup(req.params(":id"));
+
+            long endTime = System.currentTimeMillis();
+            ct.addAndGet((endTime - startTime));
+            logger.info(ct+"tim!!!!look");
+            return re;
+
         });
         put("/buy/:id", (req,res)->{
+            long startTime = System.currentTimeMillis();
+
             logger.info("buy");
             logger.info("id"+req.params(":id"));
-            return buy(req.params(":id"));
+            String re = buy(req.params(":id"));
+
+            long endTime = System.currentTimeMillis();
+            ct.addAndGet((endTime - startTime));
+            logger.info(ct+"tim!!!!buy");
+            return re;
         });
 
 
