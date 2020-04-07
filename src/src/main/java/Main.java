@@ -16,7 +16,7 @@ public class Main {
 
     public static void main(String[] args) {
 
-        port(34843);
+        port(34842);
 //todo log
         //todo At the beginning of each run, the Catalog log should
         // include one or more entries recording the initial state of
