@@ -1,5 +1,8 @@
 use dotenv::dotenv;
 use std::env;
+use bifrost::rpc::Server;
+use bifrost::raft::*;
+use bifrost::raft::state_machine::master::SubStateMachine;
 
 // Preload all configurations from environment variable
 lazy_static! {
@@ -22,4 +25,27 @@ lazy_static! {
         .split(",")
         .map(|s| s.trim().to_string())
         .collect();
+}
+
+pub async fn start_raft_state_machine(state_machine: SubStateMachine) {
+    let raft_addr = format!("{}:{}", *SERVER_ADDR, *RAFT_SERVER_PORT);
+    let raft_service = RaftService::new(Options {
+        storage: Storage::default(),
+        address: raft_addr.clone(),
+        service_id: DEFAULT_SERVICE_ID,
+    });
+    // Initialize the RPC server for Raft
+    let server = Server::new(&raft_addr);
+    // Register the Raft service to the RPC server
+    server
+        .register_service(DEFAULT_SERVICE_ID, &raft_service)
+        .await;
+    // Start the RPC server
+    Server::listen_and_resume(&server).await;
+    // Start the raft service
+    RaftService::start(&raft_service).await;
+    // Register the state machine to the raft service
+    raft_service.register_state_machine(state_machine);
+    // Probe and join the cluster. If no live node, it will bootstrap
+    raft_service.probe_and_join(&*ORDER_SERVER_LIST).await;
 }

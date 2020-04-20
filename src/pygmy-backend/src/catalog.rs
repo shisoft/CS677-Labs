@@ -16,22 +16,22 @@ mod schema;
 use crate::configs::*;
 use crate::data::establish_connection;
 use crate::models::{Item, LookupRes, Topic};
-use actix_web::error::ParseError::TooLarge;
 use actix_web::middleware::Logger;
-use actix_web::web::Json;
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use diesel::prelude::*;
-use diesel::sqlite::SqliteConnection;
 use dotenv::dotenv;
 use log::*;
 use std::collections::HashMap;
-use std::env;
 
 use bifrost::raft;
 use bifrost::raft::client::RaftClient;
 use bifrost::raft::state_machine::StateMachineCtl;
 use bifrost::raft::*;
-use bifrost::rpc::Server;
+use futures::FutureExt;
+use futures::executor::block_on;
+
+struct ReplicatedCatalog;
+const STATE_MACHINE_ID: u64 = 1;
 
 lazy_static! {
     // Pre-initialize topics from database
@@ -60,7 +60,111 @@ raft_state_machine! {
     // Define list a;; query
     def qry list_all() -> LookupRes<Vec<Item>>;
     // Define update command
-    def cmd update_stock_deduct(item_id: i32, stock: u32);
+    def cmd update_stock_deduct(item_id: i32, stock_deduct: i32) -> bool;
+}
+
+impl StateMachineCmds for ReplicatedCatalog {
+    fn search(&self, topic_qry: String) -> BoxFuture<LookupRes<Vec<Item>>> {
+        use schema::item::dsl::*;
+        // Extract topics matches query
+        let topic_matched = TOPICS
+            .values()
+            .filter_map(|matching_topic| {
+                // By checking the topic lowercase string contains searching string in lowercase
+                if matching_topic
+                    .name
+                    .to_lowercase()
+                    .contains(&topic_qry.to_lowercase())
+                {
+                    Some(matching_topic)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<&Topic>>();
+        // Query by SQL statement, finding items in the matching topics
+        // The ORM we are using diesel does not support IN statement for query, we compile it by ourselves
+        let items = diesel::sql_query(format!(
+            "SELECT * FROM item WHERE topic IN ({})",
+            topic_matched
+                .iter()
+                .map(|i| format!("{}", i.id))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ))
+            .load::<Item>(&establish_connection())
+            .unwrap();
+        // Compose a structure indicates the status of the result
+        let mut res = LookupRes::from_lookup::<()>(Ok(items));
+        // Provide topic name and it as one of the field in result because topic in item is topic id
+        res.topics = topic_matched.into_iter().cloned().collect();
+        future::ready(res).boxed()
+    }
+
+    fn lookup(&self, item_id: i32) -> BoxFuture<LookupRes<Item>> {
+        use schema::item::dsl::*;
+        let mut res = LookupRes::from_lookup(
+            // Get the item from database by its id
+            // Using diesel query DSL
+            item.filter(id.eq(item_id))
+                .get_result::<Item>(&establish_connection()),
+        );
+        // Check if we can find the item. If yes, attach the topic information
+        if res.ok {
+            res.topics = vec![TOPICS[&res.result.as_ref().unwrap().topic].clone()]
+        }
+        future::ready(res).boxed()
+    }
+
+    fn list_all(&self) -> BoxFuture<LookupRes<Vec<Item>>> {
+        use schema::item::dsl::*;
+        // Get all items
+        let all = item.load::<Item>(&establish_connection());
+        let mut res = LookupRes::from_lookup(all);
+        // Attach all topics
+        res.topics = TOPICS.values().cloned().collect();
+        future::ready(res).boxed()
+    }
+
+    fn update_stock_deduct(&mut self, item_id: i32, stock_deduct: i32) -> BoxFuture<bool> {
+        use schema::item::dsl::*;
+        // Get connection
+        let conn = establish_connection();
+        // Run a transaction.
+        // In this transaction, we need to check if there are enough stock for the transaction.
+        // If not enough stock, do nothing and return false
+        let txn_res: Result<_, diesel::result::Error> = conn.transaction(|| {
+            // Get the item entity
+            if let Ok(i) = item.filter(id.eq(item_id)).get_result::<Item>(&conn) {
+                // Only update when there are enough stock to deduct
+                if i.stock >= stock_deduct {
+                    // Update stock number for the item
+                    diesel::update(item)
+                        .filter(id.eq(item_id))
+                        .set(stock.eq(i.stock - stock_deduct))
+                        .execute(&conn)
+                        .unwrap();
+                    return Ok(true);
+                }
+            }
+            Ok(false)
+        });
+        // Return the transaction result
+        future::ready(txn_res.unwrap()).boxed()
+    }
+}
+
+lazy_static! {
+    static ref SM_CLIENT: client::SMClient = {
+        block_on(async {
+            // Create a client for raft service
+            let raft_client = RaftClient::new(&*ORDER_SERVER_LIST, DEFAULT_SERVICE_ID)
+                .await
+                .unwrap();
+            // Create a client for the state machine on the raft service
+            client::SMClient::new(STATE_MACHINE_ID, &raft_client)
+        })
+    };
 }
 
 #[actix_rt::main]
@@ -69,6 +173,10 @@ async fn main() -> std::io::Result<()> {
     dotenv().ok();
     // Initialize logger
     simple_logger::init().unwrap();
+
+    // Start the raft state machine for catalog server
+    start_raft_state_machine(Box::new(ReplicatedCatalog)).await;
+
     HttpServer::new(|| {
         App::new()
             // Setup logging middleware for HTTP server
@@ -93,97 +201,45 @@ async fn main() -> std::io::Result<()> {
 }
 
 async fn search_handler(req: HttpRequest) -> impl Responder {
-    use schema::item::dsl::*;
     // Get topic string
     let topic_query = req.match_info().get("topic").unwrap_or("");
-    // Extract topics matches query
-    let topic_matched = TOPICS
-        .values()
-        .filter_map(|matching_topic| {
-            // By checking the topic lowercase string contains searching string in lowercase
-            if matching_topic
-                .name
-                .to_lowercase()
-                .contains(&topic_query.to_lowercase())
-            {
-                Some(matching_topic)
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<&Topic>>();
-    // Query by SQL statement, finding items in the matching topics
-    // The ORM we are using diesel does not support IN statement for query, we compile it by ourselves
-    let items = diesel::sql_query(format!(
-        "SELECT * FROM item WHERE topic IN ({})",
-        topic_matched
-            .iter()
-            .map(|i| format!("{}", i.id))
-            .collect::<Vec<_>>()
-            .join(", ")
-    ))
-    .load::<Item>(&establish_connection())
-    .unwrap();
-    // Compose a structure indicates the status of the result
-    let mut res = LookupRes::from_lookup::<()>(Ok(items));
-    // Provide topic name and it as one of the field in result because topic in item is topic id
-    res.topics = topic_matched.into_iter().cloned().collect();
-    // Return the result to client in Json
-    HttpResponse::Ok().json(res)
+
+    // Return the result to client in Json from state machine
+    HttpResponse::Ok().json(SM_CLIENT.search(&topic_query.to_string()).await.unwrap())
 }
 
 async fn lookup_handler(req: HttpRequest) -> impl Responder {
-    use schema::item::dsl::*;
     // Get item it from url
     let item_id: i32 = req.match_info().get("id").unwrap().parse().unwrap();
-    let mut res = LookupRes::from_lookup(
-        // Get the item from database by its id
-        // Using diesel query DSL
-        item.filter(id.eq(item_id))
-            .get_result::<Item>(&establish_connection()),
-    );
-    // Check if we can find the item. If yes, attach the topic information
-    if res.ok {
-        res.topics = vec![TOPICS[&res.result.as_ref().unwrap().topic].clone()]
-    }
     // Return the result
-    HttpResponse::Ok().json(res)
+    HttpResponse::Ok().json(SM_CLIENT.lookup(&item_id).await.unwrap())
 }
 
 async fn list_all(req: HttpRequest) -> impl Responder {
-    use schema::item::dsl::*;
-    // Get all items
-    let all = item.load::<Item>(&establish_connection());
-    let mut res = LookupRes::from_lookup(all);
-    // Attach all topics
-    res.topics = TOPICS.values().cloned().collect();
-    HttpResponse::Ok().json(res)
+    HttpResponse::Ok().json(SM_CLIENT.list_all().await.unwrap())
 }
 
 async fn update_stock(req: HttpRequest) -> impl Responder {
-    use schema::item::dsl::*;
     let item_id: i32 = req.match_info().get("id").unwrap().parse().unwrap();
     let stock_deduct: i32 = req.match_info().get("stock").unwrap().parse().unwrap();
-    // Get connection
-    let conn = establish_connection();
-    // Run a transaction.
-    // In this transaction, we need to check if there are enough stock for the transaction.
-    // If not enough stock, do nothing and return false
-    let txn_res: Result<_, diesel::result::Error> = conn.transaction(|| {
-        // Get the item entity
-        if let Ok(i) = item.filter(id.eq(item_id)).get_result::<Item>(&conn) {
-            // Only update when there are enough stock to deduct
-            if i.stock >= stock_deduct {
-                // Update stock number for the item
-                diesel::update(item)
-                    .filter(id.eq(item_id))
-                    .set(stock.eq(i.stock - stock_deduct))
-                    .execute(&conn);
-                return Ok(true);
-            }
-        }
-        Ok(false)
-    });
-    // Return the transaction result
-    HttpResponse::Ok().json(txn_res.unwrap())
+    HttpResponse::Ok().json(SM_CLIENT.update_stock_deduct(&item_id, &stock_deduct).await.unwrap())
+}
+
+impl StateMachineCtl for ReplicatedCatalog {
+    // Auto generate stub dispatcher
+    raft_sm_complete!();
+    // Unique id for this state machine
+    fn id(&self) -> u64 {
+        STATE_MACHINE_ID
+    }
+
+    fn snapshot(&self) -> Option<Vec<u8>> {
+        // We are not going to use this feature in the project
+        unimplemented!();
+    }
+
+    fn recover(&mut self, data: Vec<u8>) -> BoxFuture<'_, ()> {
+        // We are not going to use this feature in the project
+        unimplemented!()
+    }
 }

@@ -18,14 +18,12 @@ use bifrost::raft;
 use bifrost::raft::client::RaftClient;
 use bifrost::raft::state_machine::StateMachineCtl;
 use bifrost::raft::*;
-use bifrost::rpc::Server;
 use diesel::prelude::*;
-use diesel::sqlite::SqliteConnection;
 use dotenv::dotenv;
 use future::FutureExt;
 use log::*;
-use reqwest::header::SERVER;
 use serde::{Deserialize, Serialize};
+use futures::executor::block_on;
 
 mod configs;
 mod data;
@@ -33,7 +31,6 @@ mod models;
 mod schema;
 
 struct ReplicatedOrderLog;
-
 const STATE_MACHINE_ID: u64 = 2;
 
 // Define the interface of replicated state machine for order server here
@@ -59,9 +56,23 @@ impl StateMachineCmds for ReplicatedOrderLog {
                 amount: num_amount,
                 total: total_sum,
             })
-            .execute(&conn);
+            .execute(&conn)
+            .unwrap();
         future::ready(()).boxed()
     }
+}
+
+lazy_static! {
+    static ref SM_CLIENT: client::SMClient = {
+        block_on(async {
+            // Create a client for raft service
+            let raft_client = RaftClient::new(&*ORDER_SERVER_LIST, DEFAULT_SERVICE_ID)
+                .await
+                .unwrap();
+            // Create a client for the state machine on the raft service
+            client::SMClient::new(STATE_MACHINE_ID, &raft_client)
+        })
+    };
 }
 
 #[actix_rt::main]
@@ -74,7 +85,7 @@ async fn main() -> std::io::Result<()> {
     // Initialize raft server and their service
     // The TCP server responsible for Raft use a dedicated binary protocol, require its own server
     // apart from the HTTP Restful server
-    tokio::spawn(async { start_raft_state_machine().await });
+    start_raft_state_machine(Box::new(ReplicatedOrderLog)).await;
 
     HttpServer::new(|| {
         App::new()
@@ -88,29 +99,6 @@ async fn main() -> std::io::Result<()> {
     // Run the server
     .run()
     .await
-}
-
-async fn start_raft_state_machine() {
-    let raft_addr = format!("{}:{}", *SERVER_ADDR, *RAFT_SERVER_PORT);
-    let raft_service = RaftService::new(Options {
-        storage: Storage::default(),
-        address: raft_addr.clone(),
-        service_id: DEFAULT_SERVICE_ID,
-    });
-    // Initialize the RPC server for Raft
-    let server = Server::new(&raft_addr);
-    // Register the Raft service to the RPC server
-    server
-        .register_service(DEFAULT_SERVICE_ID, &raft_service)
-        .await;
-    // Start the RPC server
-    Server::listen_and_resume(&server).await;
-    // Start the raft service
-    RaftService::start(&raft_service).await;
-    // Register the state machine to the raft service
-    raft_service.register_state_machine(Box::new(ReplicatedOrderLog));
-    // Probe and join the cluster. If no live node, it will bootstrap
-    raft_service.probe_and_join(&*ORDER_SERVER_LIST).await;
 }
 
 async fn order_handler(req: HttpRequest) -> impl Responder {
@@ -173,14 +161,8 @@ async fn order_handler(req: HttpRequest) -> impl Responder {
 }
 
 async fn log_order(item_id: i32, num_amount: i32, total_sum: f32) {
-    // Create a client for raft service
-    let raft_client = RaftClient::new(&*ORDER_SERVER_LIST, DEFAULT_SERVICE_ID)
-        .await
-        .unwrap();
-    // Create a client for the state machine on the raft service
-    let sm_client = client::SMClient::new(STATE_MACHINE_ID, &raft_client);
     // Invoke the state machine, like a RPC call
-    sm_client
+    SM_CLIENT
         .log_order(&item_id, &num_amount, &total_sum)
         .await
         .unwrap()
