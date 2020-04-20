@@ -23,9 +23,10 @@ version = "0.10"
 default-features = false
 features = ["json"]
 
+# Here we use a framework from Hao Shi for replicated state machine
 [dependencies.bifrost]
 git = "https://github.com/ShisoftResearch/bifrost.git"
-rev = "33276d414989dbb64f0473bc70284f037ef85afb"
+rev = "aa3b8c5f5507082d9ffb4152ea93742b3b6c078a"
 
 [[bin]]
 name = "catalog-server"
