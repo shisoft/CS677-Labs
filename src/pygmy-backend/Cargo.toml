@@ -16,6 +16,7 @@ serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "0.2", features = ["full"] }
 log = { version = "0.4.5", features = ["std"] }
 simple_logger = "1.6.0"
+futures = {version = "0.3"}
 
 
 [dependencies.reqwest]
@@ -25,6 +26,14 @@ features = ["json"]
 
 # Here we use a framework from Hao Shi for replicated state machine
 [dependencies.bifrost]
+git = "https://github.com/ShisoftResearch/bifrost.git"
+rev = "aa3b8c5f5507082d9ffb4152ea93742b3b6c078a"
+
+[dependencies.bifrost_plugins]
+git = "https://github.com/ShisoftResearch/bifrost.git"
+rev = "aa3b8c5f5507082d9ffb4152ea93742b3b6c078a"
+
+[dependencies.bifrost_hasher]
 git = "https://github.com/ShisoftResearch/bifrost.git"
 rev = "aa3b8c5f5507082d9ffb4152ea93742b3b6c078a"
 

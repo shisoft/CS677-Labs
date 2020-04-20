@@ -1,3 +1,5 @@
+#![feature(proc_macro_hygiene)]
+
 #[macro_use]
 extern crate diesel;
 #[macro_use]
@@ -19,8 +21,11 @@ use log::*;
 use serde::{Deserialize, Serialize};
 use bifrost::raft::state_machine::StateMachineCtl;
 use reqwest::header::SERVER;
-use bifrost::raft::{RaftService, Options, Storage, DEFAULT_SERVICE_ID};
+use bifrost::raft::*;
+use bifrost::raft;
 use bifrost::rpc::Server;
+use bifrost::raft::client::RaftClient;
+use future::FutureExt;
 
 mod configs;
 mod data;
@@ -38,15 +43,15 @@ raft_state_machine! {
 
 // Define the implementation of the RSM, which is to write the log to database
 impl StateMachineCmds for ReplicatedOrderLog {
-    fn log_order(&mut self, item: i32, amount: i32, total: f32) -> BoxFuture<()> {
-        info!("RSM replicating the order log, item {}, amount {}, total {}", item_id, amount, total);
+    fn log_order(&mut self, item_id: i32, num_amount: i32, total_sum: f32) -> BoxFuture<()> {
+        info!("RSM replicating the order log, item {}, amount {}, total {}", item_id, num_amount, total_sum);
         use schema::order::dsl::*;
         let conn = establish_connection();
         diesel::insert_into(order)
             .values(&NewOrder {
-                item,
-                amount,
-                total,
+                item: item_id,
+                amount: num_amount,
+                total: total_sum,
             })
             .execute(&conn);
         future::ready(()).boxed()
@@ -82,7 +87,7 @@ async fn main() -> std::io::Result<()> {
 }
 
 async fn start_raft_state_machine() {
-    let raft_addr = format!("{}:{}", *SERVER_ADDR, *RAFT_SERVER_PORT)
+    let raft_addr = format!("{}:{}", *SERVER_ADDR, *RAFT_SERVER_PORT);
     let raft_service = RaftService::new(Options {
         storage: Storage::default(),
         address: raft_addr.clone(),
