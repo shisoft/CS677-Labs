@@ -172,10 +172,13 @@ async fn order_handler(req: HttpRequest) -> impl Responder {
 }
 
 async fn log_order(item_id: i32, num_amount: i32, total_sum: f32) {
+    // Create a client for raft service
     let raft_client = RaftClient::new(&*ORDER_SERVER_LIST, DEFAULT_SERVICE_ID)
         .await
         .unwrap();
+    // Create a client for the state machine on the raft service
     let sm_client = client::SMClient::new(STATE_MACHINE_ID, &raft_client);
+    // Invoke the state machine, like a RPC call
     sm_client
         .log_order(&item_id, &num_amount, &total_sum)
         .await
