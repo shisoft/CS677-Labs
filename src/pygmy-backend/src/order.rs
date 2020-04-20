@@ -34,6 +34,8 @@ mod schema;
 
 struct ReplicatedOrderLog;
 
+const STATE_MACHINE_ID: u64 = 2;
+
 // Define the interface of replicated state machine here
 // The state machine only respnsible for logging the order to the database, because replicas cannot
 // check with catalog for stock on each of the nodes
@@ -147,7 +149,7 @@ async fn order_handler(req: HttpRequest) -> impl Responder {
                     "Order transaction for {} successful, log transaction",
                     item_id
                 );
-                // TODO: invoke the RSM
+                log_order(item_id, order_amount, lookup_item.price * order_amount as f32).await;
                 return HttpResponse::Ok().json(true);
             } else {
                 info!("Order transaction for {} failed, aborted", item_id);
@@ -161,12 +163,18 @@ async fn order_handler(req: HttpRequest) -> impl Responder {
     HttpResponse::Ok().json(false)
 }
 
+async fn log_order(item_id: i32, num_amount: i32, total_sum: f32) {
+    let raft_client = RaftClient::new(&*ORDER_SERVER_LIST, DEFAULT_SERVICE_ID).await.unwrap();
+    let sm_client = client::SMClient::new(STATE_MACHINE_ID, &raft_client);
+    sm_client.log_order(&item_id, &num_amount, &total_sum).await.unwrap()
+}
+
 impl StateMachineCtl for ReplicatedOrderLog {
     // Auto generate stub dispatcher
     raft_sm_complete!();
     // Unique id for this state machine
     fn id(&self) -> u64 {
-        1
+        STATE_MACHINE_ID
     }
 
     fn snapshot(&self) -> Option<Vec<u8>> {
