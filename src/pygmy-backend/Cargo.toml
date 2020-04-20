@@ -23,6 +23,10 @@ version = "0.10"
 default-features = false
 features = ["json"]
 
+[dependencies.bifrost]
+git = "https://github.com/ShisoftResearch/bifrost.git"
+rev = "33276d414989dbb64f0473bc70284f037ef85afb"
+
 [[bin]]
 name = "catalog-server"
 path = "src/catalog.rs"
