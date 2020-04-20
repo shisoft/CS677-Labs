@@ -36,10 +36,11 @@ struct ReplicatedOrderLog;
 
 const STATE_MACHINE_ID: u64 = 2;
 
-// Define the interface of replicated state machine here
-// The state machine only respnsible for logging the order to the database, because replicas cannot
+// Define the interface of replicated state machine for order server here
+// The state machine only responsible for logging the order to the database, because replicas cannot
 // check with catalog for stock on each of the nodes
 raft_state_machine! {
+    // Define log order as a command, with 3 parameters
     def cmd log_order(item: i32, amount: i32, total: f32);
 }
 

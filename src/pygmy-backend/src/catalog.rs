@@ -1,7 +1,11 @@
+#![feature(proc_macro_hygiene)]
+
 #[macro_use]
 extern crate diesel;
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate bifrost;
 extern crate dotenv;
 
 mod configs;
@@ -23,6 +27,12 @@ use log::*;
 use std::collections::HashMap;
 use std::env;
 
+use bifrost::raft;
+use bifrost::raft::client::RaftClient;
+use bifrost::raft::state_machine::StateMachineCtl;
+use bifrost::raft::*;
+use bifrost::rpc::Server;
+
 lazy_static! {
     // Pre-initialize topics from database
     static ref TOPICS: HashMap<i32, Topic> = {
@@ -34,6 +44,23 @@ lazy_static! {
         .map(|t| (t.id, t))
         .collect()
     };
+}
+
+// Define the interface of replicated state machine for catalog server here
+// The state machine responsible for both read (query, search) and write (update stock) operations
+// Note that for read operation, the framework enables read on replicas in round-robin fashion
+// In the mean while, it will compare the log term of the replica with last seen term to ensure read
+// linearizability
+// For write, will replicated in the same order
+raft_state_machine! {
+    // Define search query
+    def qry search(topic: String) -> LookupRes<Vec<Item>>;
+    // Define lookup query
+    def qry lookup(item_id: i32) -> LookupRes<Item>;
+    // Define list a;; query
+    def qry list_all() -> LookupRes<Vec<Item>>;
+    // Define update command
+    def cmd update_stock_deduct(item_id: i32, stock: u32);
 }
 
 #[actix_rt::main]
