@@ -14,18 +14,18 @@ use crate::models::{Item, LookupRes, NewOrder, Order, Topic};
 use actix_web::middleware::Logger;
 use actix_web::web::{Json, Query};
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use bifrost::raft;
+use bifrost::raft::client::RaftClient;
+use bifrost::raft::state_machine::StateMachineCtl;
+use bifrost::raft::*;
+use bifrost::rpc::Server;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use dotenv::dotenv;
-use log::*;
-use serde::{Deserialize, Serialize};
-use bifrost::raft::state_machine::StateMachineCtl;
-use reqwest::header::SERVER;
-use bifrost::raft::*;
-use bifrost::raft;
-use bifrost::rpc::Server;
-use bifrost::raft::client::RaftClient;
 use future::FutureExt;
+use log::*;
+use reqwest::header::SERVER;
+use serde::{Deserialize, Serialize};
 
 mod configs;
 mod data;
@@ -46,7 +46,10 @@ raft_state_machine! {
 // Define the implementation of the RSM, which is to write the log to database
 impl StateMachineCmds for ReplicatedOrderLog {
     fn log_order(&mut self, item_id: i32, num_amount: i32, total_sum: f32) -> BoxFuture<()> {
-        info!("RSM replicating the order log, item {}, amount {}, total {}", item_id, num_amount, total_sum);
+        info!(
+            "RSM replicating the order log, item {}, amount {}, total {}",
+            item_id, num_amount, total_sum
+        );
         use schema::order::dsl::*;
         let conn = establish_connection();
         diesel::insert_into(order)
@@ -70,9 +73,7 @@ async fn main() -> std::io::Result<()> {
     // Initialize raft server and their service
     // The TCP server responsible for Raft use a dedicated binary protocol, require its own server
     // apart from the HTTP Restful server
-    tokio::spawn(async {
-        start_raft_state_machine().await
-    });
+    tokio::spawn(async { start_raft_state_machine().await });
 
     HttpServer::new(|| {
         App::new()
@@ -98,7 +99,9 @@ async fn start_raft_state_machine() {
     // Initialize the RPC server for Raft
     let server = Server::new(&raft_addr);
     // Register the Raft service to the RPC server
-    server.register_service(DEFAULT_SERVICE_ID, &raft_service).await;
+    server
+        .register_service(DEFAULT_SERVICE_ID, &raft_service)
+        .await;
     // Start the RPC server
     Server::listen_and_resume(&server).await;
     // Start the raft service
@@ -149,7 +152,12 @@ async fn order_handler(req: HttpRequest) -> impl Responder {
                     "Order transaction for {} successful, log transaction",
                     item_id
                 );
-                log_order(item_id, order_amount, lookup_item.price * order_amount as f32).await;
+                log_order(
+                    item_id,
+                    order_amount,
+                    lookup_item.price * order_amount as f32,
+                )
+                .await;
                 return HttpResponse::Ok().json(true);
             } else {
                 info!("Order transaction for {} failed, aborted", item_id);
@@ -164,9 +172,14 @@ async fn order_handler(req: HttpRequest) -> impl Responder {
 }
 
 async fn log_order(item_id: i32, num_amount: i32, total_sum: f32) {
-    let raft_client = RaftClient::new(&*ORDER_SERVER_LIST, DEFAULT_SERVICE_ID).await.unwrap();
+    let raft_client = RaftClient::new(&*ORDER_SERVER_LIST, DEFAULT_SERVICE_ID)
+        .await
+        .unwrap();
     let sm_client = client::SMClient::new(STATE_MACHINE_ID, &raft_client);
-    sm_client.log_order(&item_id, &num_amount, &total_sum).await.unwrap()
+    sm_client
+        .log_order(&item_id, &num_amount, &total_sum)
+        .await
+        .unwrap()
 }
 
 impl StateMachineCtl for ReplicatedOrderLog {
