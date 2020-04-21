@@ -85,7 +85,7 @@ async fn main() -> std::io::Result<()> {
     // Initialize raft server and their service
     // The TCP server responsible for Raft use a dedicated binary protocol, require its own server
     // apart from the HTTP Restful server
-    start_raft_state_machine(Box::new(ReplicatedOrderLog)).await;
+    start_raft_state_machine(Box::new(ReplicatedOrderLog), &*ORDER_SERVER_LIST).await;
 
     HttpServer::new(|| {
         App::new()

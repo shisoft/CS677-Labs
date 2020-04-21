@@ -3,6 +3,7 @@ use std::env;
 use bifrost::rpc::Server;
 use bifrost::raft::*;
 use bifrost::raft::state_machine::master::SubStateMachine;
+use futures::StreamExt;
 
 // Preload all configurations from environment variable
 lazy_static! {
@@ -27,7 +28,7 @@ lazy_static! {
         .collect();
 }
 
-pub async fn start_raft_state_machine(state_machine: SubStateMachine) {
+pub async fn start_raft_state_machine(state_machine: SubStateMachine, server_list: &Vec<String>) {
     let raft_addr = format!("{}:{}", *SERVER_ADDR, *RAFT_SERVER_PORT);
     let raft_service = RaftService::new(Options {
         storage: Storage::default(),
@@ -47,5 +48,7 @@ pub async fn start_raft_state_machine(state_machine: SubStateMachine) {
     // Register the state machine to the raft service
     raft_service.register_state_machine(state_machine);
     // Probe and join the cluster. If no live node, it will bootstrap
-    raft_service.probe_and_join(&*ORDER_SERVER_LIST).await;
+    raft_service.probe_and_join(&server_list.iter().map(|addr| {
+        format!("{}:{}", addr, *RAFT_SERVER_PORT)
+    }).collect()).await;
 }

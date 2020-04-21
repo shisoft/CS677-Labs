@@ -175,7 +175,7 @@ async fn main() -> std::io::Result<()> {
     simple_logger::init().unwrap();
 
     // Start the raft state machine for catalog server
-    start_raft_state_machine(Box::new(ReplicatedCatalog)).await;
+    start_raft_state_machine(Box::new(ReplicatedCatalog), &*CAT_SERVER_LIST).await;
 
     HttpServer::new(|| {
         App::new()
