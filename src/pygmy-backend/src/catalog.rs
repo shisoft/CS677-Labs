@@ -7,6 +7,8 @@ extern crate lazy_static;
 #[macro_use]
 extern crate bifrost;
 extern crate dotenv;
+#[macro_use]
+extern crate log;
 
 mod configs;
 mod data;
@@ -31,7 +33,7 @@ use futures::FutureExt;
 use futures::executor::block_on;
 
 struct ReplicatedCatalog;
-const STATE_MACHINE_ID: u64 = 1;
+const STATE_MACHINE_ID: u64 = 50;
 
 lazy_static! {
     // Pre-initialize topics from database
@@ -65,6 +67,7 @@ raft_state_machine! {
 
 impl StateMachineCmds for ReplicatedCatalog {
     fn search(&self, topic_qry: String) -> BoxFuture<LookupRes<Vec<Item>>> {
+        info!("Searching {}", topic_qry);
         use schema::item::dsl::*;
         // Extract topics matches query
         let topic_matched = TOPICS
@@ -102,6 +105,7 @@ impl StateMachineCmds for ReplicatedCatalog {
     }
 
     fn lookup(&self, item_id: i32) -> BoxFuture<LookupRes<Item>> {
+        info!("Lookup {}", item_id);
         use schema::item::dsl::*;
         let mut res = LookupRes::from_lookup(
             // Get the item from database by its id
@@ -117,6 +121,7 @@ impl StateMachineCmds for ReplicatedCatalog {
     }
 
     fn list_all(&self) -> BoxFuture<LookupRes<Vec<Item>>> {
+        info!("List all");
         use schema::item::dsl::*;
         // Get all items
         let all = item.load::<Item>(&establish_connection());
@@ -127,6 +132,7 @@ impl StateMachineCmds for ReplicatedCatalog {
     }
 
     fn update_stock_deduct(&mut self, item_id: i32, stock_deduct: i32) -> BoxFuture<bool> {
+        info!("Deduct item {} amount {}", item_id, stock_deduct);
         use schema::item::dsl::*;
         // Get connection
         let conn = establish_connection();
@@ -156,9 +162,10 @@ impl StateMachineCmds for ReplicatedCatalog {
 
 lazy_static! {
     static ref SM_CLIENT: client::SMClient = {
+        debug!("Construct state machine client from {:?}", &*CATALOG_RAFT_SERVER_LIST);
         block_on(async {
             // Create a client for raft service
-            let raft_client = RaftClient::new(&*ORDER_SERVER_LIST, DEFAULT_SERVICE_ID)
+            let raft_client = RaftClient::new(&*CATALOG_RAFT_SERVER_LIST, DEFAULT_SERVICE_ID)
                 .await
                 .unwrap();
             // Create a client for the state machine on the raft service
@@ -169,13 +176,12 @@ lazy_static! {
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
-    // Initialize configure reader
-    dotenv().ok();
     // Initialize logger
-    simple_logger::init().unwrap();
-
+    simple_logger::init_with_level(Level::Debug);
+    info!("Running Catalog server");
     // Start the raft state machine for catalog server
-    start_raft_state_machine(Box::new(ReplicatedCatalog), &*CAT_SERVER_LIST).await;
+    info!("Catalog server have peers: {:?}", &*CATALOG_SERVER_LIST);
+    start_raft_state_machine(Box::new(ReplicatedCatalog), &*CATALOG_RAFT_SERVER_LIST).await;
 
     HttpServer::new(|| {
         App::new()
@@ -220,9 +226,11 @@ async fn list_all(req: HttpRequest) -> impl Responder {
 }
 
 async fn update_stock(req: HttpRequest) -> impl Responder {
+    debug!("Trying to update stock by sending command to state machine");
     let item_id: i32 = req.match_info().get("id").unwrap().parse().unwrap();
     let stock_deduct: i32 = req.match_info().get("stock").unwrap().parse().unwrap();
-    HttpResponse::Ok().json(SM_CLIENT.update_stock_deduct(&item_id, &stock_deduct).await.unwrap())
+    let res: bool = SM_CLIENT.update_stock_deduct(&item_id, &stock_deduct).await.unwrap();
+    HttpResponse::Ok().json(res)
 }
 
 impl StateMachineCtl for ReplicatedCatalog {

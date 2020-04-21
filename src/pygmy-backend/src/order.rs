@@ -7,6 +7,8 @@ extern crate lazy_static;
 #[macro_use]
 extern crate bifrost;
 extern crate dotenv;
+#[macro_use]
+extern crate log;
 
 use crate::configs::*;
 use crate::data::establish_connection;
@@ -31,7 +33,7 @@ mod models;
 mod schema;
 
 struct ReplicatedOrderLog;
-const STATE_MACHINE_ID: u64 = 2;
+const STATE_MACHINE_ID: u64 = 100;
 
 // Define the interface of replicated state machine for order server here
 // The state machine only responsible for logging the order to the database, because replicas cannot
@@ -64,9 +66,10 @@ impl StateMachineCmds for ReplicatedOrderLog {
 
 lazy_static! {
     static ref SM_CLIENT: client::SMClient = {
+        debug!("Construct state machine client from {:?}", &*ORDER_RAFT_SERVER_LIST);
         block_on(async {
             // Create a client for raft service
-            let raft_client = RaftClient::new(&*ORDER_SERVER_LIST, DEFAULT_SERVICE_ID)
+            let raft_client = RaftClient::new(&*ORDER_RAFT_SERVER_LIST, DEFAULT_SERVICE_ID)
                 .await
                 .unwrap();
             // Create a client for the state machine on the raft service
@@ -77,15 +80,14 @@ lazy_static! {
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
-    // Initialize configure reader
-    dotenv().ok();
     // Initialize logger
-    simple_logger::init().unwrap();
+    simple_logger::init_with_level(Level::Debug);
 
+    info!("Running Order server");
     // Initialize raft server and their service
     // The TCP server responsible for Raft use a dedicated binary protocol, require its own server
     // apart from the HTTP Restful server
-    start_raft_state_machine(Box::new(ReplicatedOrderLog), &*ORDER_SERVER_LIST).await;
+    start_raft_state_machine(Box::new(ReplicatedOrderLog), &*ORDER_RAFT_SERVER_LIST).await;
 
     HttpServer::new(|| {
         App::new()

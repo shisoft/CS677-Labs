@@ -1,7 +1,7 @@
 #!/bin/bash
 echo "Running Pygmy Backend"
 
-if [ $1 -eq "catalog" ] 
+if [[ $1 == "catalog" ]] 
     then
         echo "Run catalog server"
         catalog-server

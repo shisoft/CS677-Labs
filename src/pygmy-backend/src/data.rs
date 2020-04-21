@@ -1,5 +1,4 @@
 use diesel::prelude::*;
-use dotenv::dotenv;
 use std::env;
 
 // Establish connection for each request. Because we are using embedded SQLite, no bother caching it
