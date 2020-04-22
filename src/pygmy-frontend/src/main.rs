@@ -8,15 +8,15 @@ use actix_web::http::header;
 use serde::{Deserialize, Serialize};
 use dotenv::dotenv;
 use crate::configs::*;
+use log::Level;
 
 mod configs;
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
-    // Initialize configure reader
-    dotenv().ok();
     // Initialize logger
-    simple_logger::init().unwrap();
+    simple_logger::init_with_level(Level::Debug);
+    
     HttpServer::new(|| {
         App::new()
             // Setup logging middleware for HTTP server
