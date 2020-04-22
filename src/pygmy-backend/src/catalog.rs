@@ -208,28 +208,39 @@ async fn main() -> std::io::Result<()> {
 
 async fn search_handler(req: HttpRequest) -> impl Responder {
     // Get topic string
-    let topic_query = req.match_info().get("topic").unwrap_or("");
-
+    let topic_query = req.match_info().get("topic").unwrap_or("").to_string();
+    let task = tokio::spawn(async move {
+        SM_CLIENT.search(&topic_query).await.unwrap()
+    });
     // Return the result to client in Json from state machine
-    HttpResponse::Ok().json(SM_CLIENT.search(&topic_query.to_string()).await.unwrap())
+    HttpResponse::Ok().json(task.await.unwrap())
 }
 
 async fn lookup_handler(req: HttpRequest) -> impl Responder {
     // Get item it from url
     let item_id: i32 = req.match_info().get("id").unwrap().parse().unwrap();
+    let task = tokio::spawn(async move {
+        SM_CLIENT.lookup(&item_id).await.unwrap()
+    });
     // Return the result
-    HttpResponse::Ok().json(SM_CLIENT.lookup(&item_id).await.unwrap())
+    HttpResponse::Ok().json(task.await.unwrap())
 }
 
 async fn list_all(req: HttpRequest) -> impl Responder {
-    HttpResponse::Ok().json(SM_CLIENT.list_all().await.unwrap())
+    let task = tokio::spawn(async move {
+        SM_CLIENT.list_all().await.unwrap()
+    });
+    HttpResponse::Ok().json(task.await.unwrap())
 }
 
 async fn update_stock(req: HttpRequest) -> impl Responder {
     debug!("Trying to update stock by sending command to state machine");
     let item_id: i32 = req.match_info().get("id").unwrap().parse().unwrap();
     let stock_deduct: i32 = req.match_info().get("stock").unwrap().parse().unwrap();
-    let res: bool = SM_CLIENT.update_stock_deduct(&item_id, &stock_deduct).await.unwrap();
+    let task = tokio::spawn(async move {
+        SM_CLIENT.update_stock_deduct(&item_id, &stock_deduct).await.unwrap()
+    });
+    let res: bool = task.await.unwrap();
     HttpResponse::Ok().json(res)
 }
 
