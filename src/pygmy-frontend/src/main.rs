@@ -1,5 +1,7 @@
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate log;
 
 use actix_web::{App, HttpServer, web, HttpRequest, Responder, HttpResponse};
 use actix_web::middleware::Logger;
@@ -38,6 +40,8 @@ async fn main() -> std::io::Result<()> {
             .route("/lookup", web::get().to(list_all))
             // Set route for order server
             .route("/order/{id}", web::post().to(order_handler))
+            // Set route for invalidation
+            .route("/invalidate/item/{id}", web::post().to(invalidate_item))
     })
         // Set binding port
         .bind(format!("0.0.0.0:{}", *FRONT_SERVER_PORT))?
@@ -78,6 +82,17 @@ async fn list_all(req: HttpRequest) -> impl Responder {
         reqwest::get(&format!("{}/lookup", *CAT_SERVER_ADDR)).await.unwrap().text().await.unwrap()
     };
     response_with(res)
+}
+
+async fn invalidate_item(req: HttpRequest) -> impl Responder {
+    let item_id = req.match_info().get("id").unwrap();
+    info!("Invalidate item {}", item_id);
+    // Clear search and list all cache
+    SEARCH_CACHES.lock().clear();
+    *LIST_ALL_CACHE.lock() = None;
+    // Invalidate cache for this item
+    LOOKUP_CACHES.lock().remove(&item_id.to_string());
+    HttpResponse::Ok().json(true)
 }
 
 
