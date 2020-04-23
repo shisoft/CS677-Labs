@@ -9,8 +9,17 @@ use serde::{Deserialize, Serialize};
 use dotenv::dotenv;
 use crate::configs::*;
 use log::Level;
+use parking_lot::*;
+use std::collections::HashMap;
+use std::future::Future;
 
 mod configs;
+
+lazy_static! {
+    static ref SEARCH_CACHES: Mutex<HashMap<String, String>> = Mutex::new(HashMap::new());
+    static ref LOOKUP_CACHES: Mutex<HashMap<String, String>> = Mutex::new(HashMap::new());
+    static ref LIST_ALL_CACHE: Mutex<Option<String>> = Mutex::new(None);
+}
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
@@ -39,19 +48,36 @@ async fn main() -> std::io::Result<()> {
 
 async fn search_handler(req: HttpRequest) -> impl Responder {
     // Get topic string
-    let topic_query = req.match_info().get("topic").unwrap_or("");
-    response_with(reqwest::get(&format!("{}/search/{}", *CAT_SERVER_ADDR, topic_query)).await.unwrap().text().await.unwrap())
+    let topic_query = req.match_info().get("topic").unwrap_or("").to_string();
+    response_with(
+        cached_future(
+            &topic_query,
+            &*SEARCH_CACHES,
+            async {
+                reqwest::get(&format!("{}/search/{}", *CAT_SERVER_ADDR, topic_query)).await.unwrap().text().await.unwrap()
+            }).await)
 }
 
 async fn lookup_handler(req: HttpRequest) -> impl Responder {
     // Get item it from url
     let item_id: i32 = req.match_info().get("id").unwrap().parse().unwrap();
-    response_with(reqwest::get(&format!("{}/lookup/{}", *CAT_SERVER_ADDR, item_id)).await.unwrap().text().await.unwrap())
+    response_with(
+        cached_future(
+            &format!("{}", item_id),
+            &*LOOKUP_CACHES,
+            async {
+                reqwest::get(&format!("{}/lookup/{}", *CAT_SERVER_ADDR, item_id)).await.unwrap().text().await.unwrap()
+            }).await)
 }
 
 async fn list_all(req: HttpRequest) -> impl Responder {
     // Get all items
-    response_with(reqwest::get(&format!("{}/lookup", *CAT_SERVER_ADDR)).await.unwrap().text().await.unwrap())
+    let res = if let Some(list) = &*LIST_ALL_CACHE.lock() {
+        list.clone()
+    } else {
+        reqwest::get(&format!("{}/lookup", *CAT_SERVER_ADDR)).await.unwrap().text().await.unwrap()
+    };
+    response_with(res)
 }
 
 
@@ -83,4 +109,14 @@ fn response_with(res_text: String) -> impl Responder {
     res.body(res_text)
 }
 
+async fn cached_future<F: Future<Output = String>>(key: &String, cache: &Mutex<HashMap<String, String>>, fut: F) -> String {
+    let cached = cache.lock().get(key).cloned();
+    if let Some(val) = cached {
+        val
+    } else {
+        let remote = fut.await;
+        cache.lock().insert(key.clone(), remote.clone());
+        remote
+    }
+}
 
