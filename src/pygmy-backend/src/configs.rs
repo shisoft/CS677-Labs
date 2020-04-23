@@ -12,6 +12,8 @@ lazy_static! {
     pub static ref RAFT_SERVER_PORT: String =
         env::var("RAFT_SERVER_PORT").unwrap_or("34803".to_string());
     pub static ref SERVER_ADDR: String = env::var("SERVER_ADDR").unwrap_or("127.0.0.1".to_string());
+    pub static ref FRONTEND_SERVER_ADDR: String = env::var("FRONTEND_SERVER_ADDR")
+        .unwrap_or("127.0.0.1:34800".to_string());
     pub static ref CATALOG_SERVER_LIST: Vec<String> = env::var("CATALOG_SERVER_LIST")
         .unwrap_or("127.0.0.1".to_string())
         .split(",")

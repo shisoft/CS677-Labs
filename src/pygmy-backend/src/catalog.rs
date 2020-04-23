@@ -241,7 +241,22 @@ async fn update_stock(req: HttpRequest) -> impl Responder {
         SM_CLIENT.update_stock_deduct(&item_id, &stock_deduct).await.unwrap()
     });
     let res: bool = task.await.unwrap();
+    if res {
+        invalidate_frontend_item_cache(item_id).await
+    }
     HttpResponse::Ok().json(res)
+}
+
+async fn invalidate_frontend_item_cache(item_id: i32) {
+    let url = format!("http://{}/invalidate/item/{}", *FRONTEND_SERVER_ADDR, item_id);
+    reqwest::Client::new()
+        .post(&url)
+        .send()
+        .await
+        .unwrap()
+        .json::<bool>()
+        .await
+        .unwrap();
 }
 
 impl StateMachineCtl for ReplicatedCatalog {
