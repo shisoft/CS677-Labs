@@ -9,10 +9,18 @@ lazy_static! {
         env::var("CAT_SERVER_PORT").unwrap_or("34801".to_string());
     pub static ref ORDER_SERVER_PORT: String =
         env::var("ORDER_SERVER_PORT").unwrap_or("34802".to_string());
-    pub static ref CAT_SERVER_HOST: String =
-        env::var("CAT_SERVER_ADDR").unwrap_or("127.0.0.1".to_string());
-    pub static ref ORDER_SERVER_HOST: String =
-        env::var("ORDER_SERVER_ADDR").unwrap_or("127.0.0.1".to_string());
-    pub static ref CAT_SERVER_ADDR: String = format!("http://{}:{}", *CAT_SERVER_HOST, *CAT_SERVER_PORT);
-    pub static ref ORDER_SERVER_ADDR: String = format!("http://{}:{}", *ORDER_SERVER_HOST, *ORDER_SERVER_PORT);
+    pub static ref CAT_SERVER_LIST: Vec<String> = env::var("CATALOG_SERVER_LIST")
+        .unwrap_or("127.0.0.1".to_string())
+        .split(",")
+        .map(|s| s.trim().to_string())
+        .collect();
+    pub static ref ORDER_SERVER_LIST: Vec<String> = env::var("ORDER_SERVER_LIST")
+        .unwrap_or("127.0.0.1".to_string())
+        .split(",")
+        .map(|s| s.trim().to_string())
+        .collect();
+    pub static ref CAT_SERVER_ADDR: Vec<String> = 
+        CAT_SERVER_LIST.iter().map(|addr| format!("http://{}:{}", addr, *CAT_SERVER_PORT)).collect();
+    pub static ref ORDER_SERVER_ADDR: Vec<String> = 
+        ORDER_SERVER_LIST.iter().map(|addr| format!("http://{}:{}", addr, *ORDER_SERVER_PORT)).collect();
 }

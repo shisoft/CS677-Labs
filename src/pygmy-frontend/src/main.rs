@@ -14,6 +14,7 @@ use log::Level;
 use parking_lot::*;
 use std::collections::HashMap;
 use std::future::Future;
+use std::sync::atomic::*;
 
 mod configs;
 
@@ -58,7 +59,7 @@ async fn search_handler(req: HttpRequest) -> impl Responder {
             &topic_query,
             &*SEARCH_CACHES,
             async {
-                reqwest::get(&format!("{}/search/{}", *CAT_SERVER_ADDR, topic_query)).await.unwrap().text().await.unwrap()
+                reqwest::get(&format!("{}/search/{}", next_catalog_server(), topic_query)).await.unwrap().text().await.unwrap()
             }).await)
 }
 
@@ -70,16 +71,20 @@ async fn lookup_handler(req: HttpRequest) -> impl Responder {
             &format!("{}", item_id),
             &*LOOKUP_CACHES,
             async {
-                reqwest::get(&format!("{}/lookup/{}", *CAT_SERVER_ADDR, item_id)).await.unwrap().text().await.unwrap()
+                reqwest::get(&format!("{}/lookup/{}", next_catalog_server(), item_id)).await.unwrap().text().await.unwrap()
             }).await)
 }
 
 async fn list_all(req: HttpRequest) -> impl Responder {
     // Get all items
-    let res = if let Some(list) = &*LIST_ALL_CACHE.lock() {
-        list.clone()
+    let res = if let Some(list) = LIST_ALL_CACHE.lock().clone() {
+        debug!("Use cache for list all items");
+        list
     } else {
-        reqwest::get(&format!("{}/lookup", *CAT_SERVER_ADDR)).await.unwrap().text().await.unwrap()
+        debug!("Getting data from down stream catalog server for list all");
+        let response = reqwest::get(&format!("{}/lookup", next_catalog_server())).await.unwrap().text().await.unwrap();
+        *LIST_ALL_CACHE.lock() = Some(response.clone());
+        response
     };
     response_with(res)
 }
@@ -108,7 +113,7 @@ async fn order_handler(req: HttpRequest) -> impl Responder {
         reqwest::Client::new()
             .post(&format!(
                 "{}/order/{}?amount={}",
-                *ORDER_SERVER_ADDR, item_id, order_amount
+                next_order_server(), item_id, order_amount
             ))
             .send()
             .await
@@ -127,11 +132,27 @@ fn response_with(res_text: String) -> impl Responder {
 async fn cached_future<F: Future<Output = String>>(key: &String, cache: &Mutex<HashMap<String, String>>, fut: F) -> String {
     let cached = cache.lock().get(key).cloned();
     if let Some(val) = cached {
+        debug!("Using cached result for {}", key);
         val
     } else {
+        debug!("Using remote result for {}", key);
         let remote = fut.await;
         cache.lock().insert(key.clone(), remote.clone());
         remote
     }
 }
 
+// Pick up servers in round-robin fashion
+lazy_static! {
+    static ref CATALOG_CLOCK: AtomicUsize = AtomicUsize::new(0);
+    static ref ORDER_CLOCK: AtomicUsize = AtomicUsize::new(0);
+}
+fn next_catalog_server() -> &'static String {
+    let len = CAT_SERVER_ADDR.len();
+    &CAT_SERVER_ADDR[CATALOG_CLOCK.fetch_add(1, Ordering::Relaxed) % len]
+}
+
+fn next_order_server() -> &'static String {
+    let len = CAT_SERVER_ADDR.len();
+    &ORDER_SERVER_ADDR[ORDER_CLOCK.fetch_add(1, Ordering::Relaxed) % len]
+}
