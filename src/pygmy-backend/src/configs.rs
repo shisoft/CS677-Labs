@@ -11,8 +11,6 @@ lazy_static! {
         env::var("ORDER_SERVER_PORT").unwrap_or("34802".to_string());
     pub static ref RAFT_SERVER_PORT: String =
         env::var("RAFT_SERVER_PORT").unwrap_or("34803".to_string());
-    pub static ref CAT_SERVER_ADDR: String =
-        env::var("CAT_SERVER_ADDR").unwrap_or("127.0.0.1".to_string());
     pub static ref SERVER_ADDR: String = env::var("SERVER_ADDR").unwrap_or("127.0.0.1".to_string());
     pub static ref CATALOG_SERVER_LIST: Vec<String> = env::var("CATALOG_SERVER_LIST")
         .unwrap_or("127.0.0.1".to_string())
@@ -33,6 +31,10 @@ lazy_static! {
     pub static ref ORDER_RAFT_SERVER_LIST: Vec<String> =
         ORDER_SERVER_LIST.iter().map(|addr| {
             format!("{}:{}", addr, *RAFT_SERVER_PORT)
+        }).collect();
+    pub static ref CATALOG_HTTP_SERVER_LIST: Vec<String> =
+        CATALOG_SERVER_LIST.iter().map(|addr| {
+            format!("http://{}:{}", addr, *CAT_SERVER_PORT)
         }).collect();
 }
 

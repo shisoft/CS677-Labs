@@ -24,8 +24,10 @@ use diesel::prelude::*;
 use dotenv::dotenv;
 use future::FutureExt;
 use log::*;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::de::DeserializeOwned;
 use futures::executor::block_on;
+use std::sync::atomic::*;
 
 mod configs;
 mod data;
@@ -116,28 +118,12 @@ async fn order_handler(req: HttpRequest) -> impl Responder {
         item_id, order_amount
     );
     // First query the catalog server for item information and check stock
-    let cat_server = format!("http://{}:{}", *CAT_SERVER_ADDR, *CAT_SERVER_PORT);
-    let cat_lookup: LookupRes<Item> = reqwest::get(&format!("{}/lookup/{}", cat_server, item_id))
-        .await
-        .unwrap()
-        .json()
-        .await
-        .unwrap();
+    let cat_lookup: LookupRes<Item> = get_from_catalog_balanced(&format!("lookup/{}", item_id)).await.unwrap();
     if cat_lookup.ok {
         let lookup_item = cat_lookup.result.unwrap();
         info!("Found item {:?}, start transaction", lookup_item);
         if lookup_item.stock >= order_amount {
-            let update_res = reqwest::Client::new()
-                .post(&format!(
-                    "{}/update/{}/stock/deduct/{}",
-                    cat_server, item_id, order_amount
-                ))
-                .send()
-                .await
-                .unwrap()
-                .json::<bool>()
-                .await
-                .unwrap();
+            let update_res = post_to_catalog_balanced(&format!("update/{}/stock/deduct/{}", item_id, order_amount)).await.unwrap();
             if update_res {
                 info!(
                     "Order transaction for {} successful, log transaction",
@@ -187,4 +173,54 @@ impl StateMachineCtl for ReplicatedOrderLog {
         // We are not going to use this feature in the project
         unimplemented!()
     }
+}
+
+// Pick up servers in round-robin fashion
+lazy_static! {
+    static ref CATALOG_CLOCK: AtomicUsize = AtomicUsize::new(0);
+}
+
+fn next_catalog_server() -> &'static String {
+    let len = CATALOG_HTTP_SERVER_LIST.len();
+    &CATALOG_HTTP_SERVER_LIST[CATALOG_CLOCK.fetch_add(1, Ordering::Relaxed) % len]
+}
+
+async fn get_from_catalog_balanced<R>(url: &String) -> Option<R>
+    where R: DeserializeOwned
+{
+    for _ in 0..CATALOG_HTTP_SERVER_LIST.len() {
+        let server = next_catalog_server();
+        let url = format!("{}/{}", server, url);
+        debug!("GET URL - {}", url);
+        let res = reqwest::get(&url).await;
+        if !res.is_ok() {
+            continue;
+        }
+        let json = res.unwrap().json::<R>().await;
+        if !json.is_ok() {
+            continue;
+        }
+        return Some(json.unwrap());
+    }
+    return None;
+}
+
+async fn post_to_catalog_balanced<R>(url: &String) -> Option<R>
+    where R: DeserializeOwned
+{
+    for _ in 0..CATALOG_HTTP_SERVER_LIST.len() {
+        let server = next_catalog_server();
+        let url = format!("{}/{}", server, url);
+        debug!("POST URL - {}", url);
+        let res = reqwest::Client::new().post(&url).send().await;
+        if !res.is_ok() {
+            continue;
+        }
+        let json = res.unwrap().json::<R>().await;
+        if !json.is_ok() {
+            continue;
+        }
+        return Some(json.unwrap());
+    }
+    return None;
 }
