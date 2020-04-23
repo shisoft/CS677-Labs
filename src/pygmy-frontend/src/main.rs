@@ -12,15 +12,17 @@ use dotenv::dotenv;
 use crate::configs::*;
 use log::Level;
 use parking_lot::*;
-use std::collections::HashMap;
 use std::future::Future;
 use std::sync::atomic::*;
+use lru_cache::LruCache;
 
 mod configs;
 
+const CACHE_CAPACITY: usize = 10;
+
 lazy_static! {
-    static ref SEARCH_CACHES: Mutex<HashMap<String, String>> = Mutex::new(HashMap::new());
-    static ref LOOKUP_CACHES: Mutex<HashMap<String, String>> = Mutex::new(HashMap::new());
+    static ref SEARCH_CACHES: Mutex<LruCache<String, String>> = Mutex::new(LruCache::new(CACHE_CAPACITY));
+    static ref LOOKUP_CACHES: Mutex<LruCache<String, String>> = Mutex::new(LruCache::new(CACHE_CAPACITY));
     static ref LIST_ALL_CACHE: Mutex<Option<String>> = Mutex::new(None);
 }
 
@@ -59,7 +61,7 @@ async fn search_handler(req: HttpRequest) -> impl Responder {
             &topic_query,
             &*SEARCH_CACHES,
             async {
-                reqwest::get(&format!("{}/search/{}", next_catalog_server(), topic_query)).await.unwrap().text().await.unwrap()
+                get_from_balanced_catalog(format!("search/{}", topic_query)).await
             }).await)
 }
 
@@ -71,19 +73,22 @@ async fn lookup_handler(req: HttpRequest) -> impl Responder {
             &format!("{}", item_id),
             &*LOOKUP_CACHES,
             async {
-                reqwest::get(&format!("{}/lookup/{}", next_catalog_server(), item_id)).await.unwrap().text().await.unwrap()
+                get_from_balanced_catalog(format!("lookup/{}", item_id)).await
             }).await)
 }
 
 async fn list_all(req: HttpRequest) -> impl Responder {
     // Get all items
-    let res = if let Some(list) = LIST_ALL_CACHE.lock().clone() {
+    let mut cache = LIST_ALL_CACHE.lock();
+    let res = if let Some(list) = &*cache {
         debug!("Use cache for list all items");
-        list
+        Some(list.clone())
     } else {
         debug!("Getting data from down stream catalog server for list all");
-        let response = reqwest::get(&format!("{}/lookup", next_catalog_server())).await.unwrap().text().await.unwrap();
-        *LIST_ALL_CACHE.lock() = Some(response.clone());
+        let response = get_from_balanced_catalog(format!("lookup")).await;
+        if let Some(code) = &response {
+            *cache = Some(code.clone());
+        }
         response
     };
     response_with(res)
@@ -109,35 +114,41 @@ async fn order_handler(req: HttpRequest) -> impl Responder {
     let item_id: i32 = req.match_info().get("id").unwrap().parse().unwrap();
     let query = Query::<QueryFormat>::from_query(req.query_string()).unwrap();
     let order_amount: i32 = if query.amount > 0 { query.amount } else { 1 };
-    response_with(
-        reqwest::Client::new()
-            .post(&format!(
-                "{}/order/{}?amount={}",
-                next_order_server(), item_id, order_amount
-            ))
-            .send()
-            .await
-            .unwrap()
-            .text()
-            .await
-            .unwrap())
+    let res = reqwest::Client::new()
+        .post(&format!(
+            "{}/order/{}?amount={}",
+            next_order_server(), item_id, order_amount
+        ))
+        .send()
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
+    response_with(Some(res))
 }
 
-fn response_with(res_text: String) -> impl Responder {
-    let mut res = HttpResponse::Ok();
-    res.header(header::CONTENT_TYPE, "application/json");
-    res.body(res_text)
+fn response_with(res_text: Option<String>) -> impl Responder {
+    if let Some(code) = res_text {
+        let mut res = HttpResponse::Ok();
+        res.header(header::CONTENT_TYPE, "application/json");
+        res.body(code)
+    } else {
+        HttpResponse::InternalServerError().body("Cannot find server available")
+    }
 }
 
-async fn cached_future<F: Future<Output = String>>(key: &String, cache: &Mutex<HashMap<String, String>>, fut: F) -> String {
-    let cached = cache.lock().get(key).cloned();
+async fn cached_future<F: Future<Output = Option<String>>>(key: &String, cache: &Mutex<LruCache<String, String>>, fut: F) -> Option<String> {
+    let cached = cache.lock().get_mut(key).cloned();
     if let Some(val) = cached {
         debug!("Using cached result for {}", key);
-        val
+        Some(val)
     } else {
         debug!("Using remote result for {}", key);
         let remote = fut.await;
-        cache.lock().insert(key.clone(), remote.clone());
+        if let Some(remote) = &remote {
+            cache.lock().insert(key.clone(), remote.clone());
+        }
         remote
     }
 }
@@ -148,11 +159,30 @@ lazy_static! {
     static ref ORDER_CLOCK: AtomicUsize = AtomicUsize::new(0);
 }
 fn next_catalog_server() -> &'static String {
-    let len = CAT_SERVER_ADDR.len();
-    &CAT_SERVER_ADDR[CATALOG_CLOCK.fetch_add(1, Ordering::Relaxed) % len]
+    let len = CAT_SERVER_ADDRS.len();
+    &CAT_SERVER_ADDRS[CATALOG_CLOCK.fetch_add(1, Ordering::Relaxed) % len]
 }
 
 fn next_order_server() -> &'static String {
-    let len = CAT_SERVER_ADDR.len();
-    &ORDER_SERVER_ADDR[ORDER_CLOCK.fetch_add(1, Ordering::Relaxed) % len]
+    let len = CAT_SERVER_ADDRS.len();
+    &ORDER_SERVER_ADDRS[ORDER_CLOCK.fetch_add(1, Ordering::Relaxed) % len]
+}
+
+async fn get_from_balanced_catalog(url_template: String) -> Option<String> {
+    let remains = CAT_SERVER_ADDRS.len();
+    for i in 0..remains {
+        let addr = next_catalog_server();
+        let url = format!("{}/{}", addr, url_template);
+        debug!("Checking url ({}): {}", i, url);
+        let res = reqwest::get(&url).await;
+        if !res.is_ok() {
+            continue
+        };
+        let res = res.unwrap().text().await;
+        if !res.is_ok() {
+            continue;
+        }
+        return Some(res.unwrap());
+    }
+    None
 }

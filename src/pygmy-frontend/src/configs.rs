@@ -19,8 +19,8 @@ lazy_static! {
         .split(",")
         .map(|s| s.trim().to_string())
         .collect();
-    pub static ref CAT_SERVER_ADDR: Vec<String> = 
+    pub static ref CAT_SERVER_ADDRS: Vec<String> =
         CAT_SERVER_LIST.iter().map(|addr| format!("http://{}:{}", addr, *CAT_SERVER_PORT)).collect();
-    pub static ref ORDER_SERVER_ADDR: Vec<String> = 
+    pub static ref ORDER_SERVER_ADDRS: Vec<String> =
         ORDER_SERVER_LIST.iter().map(|addr| format!("http://{}:{}", addr, *ORDER_SERVER_PORT)).collect();
 }

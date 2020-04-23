@@ -1,0 +1,99 @@
+version: '3.6'
+services:
+    catalog-server-1:
+        image: "shisoft:pygmy-backend"
+        container_name: "catalog-1"
+        entrypoint: catalog-server
+        environment: 
+            - DATABASE_URL=db
+            - SERVER_ADDR=catalog-1
+            - CATALOG_SERVER_LIST=catalog-1,catalog-2,catalog-3
+            - BOOTSTRAP_RAFT=true
+            - RUST_BACKTRACE=1
+        expose: 
+            - 34801
+            - 34803
+        ports:
+            - "34801:34801"
+
+    catalog-server-2:
+        image: "shisoft:pygmy-backend"
+        container_name: "catalog-2"
+        entrypoint: catalog-server
+        environment: 
+            - DATABASE_URL=db
+            - SERVER_ADDR=catalog-2
+            - CATALOG_SERVER_LIST=catalog-1,catalog-2,catalog-3
+            - RUST_BACKTRACE=1
+        expose: 
+            - 34801
+            - 34803
+
+    catalog-server-3:
+        image: "shisoft:pygmy-backend"
+        container_name: "catalog-3"
+        entrypoint: catalog-server
+        environment: 
+            - DATABASE_URL=db
+            - SERVER_ADDR=catalog-3
+            - CATALOG_SERVER_LIST=catalog-1,catalog-2,catalog-3
+            - RUST_BACKTRACE=1
+        expose: 
+            - 34801
+            - 34803
+    
+    order-server-1:
+        image: "shisoft:pygmy-backend"
+        container_name: "order-1"
+        entrypoint: order-server
+        environment: 
+            - DATABASE_URL=db
+            - SERVER_ADDR=order-1
+            - ORDER_SERVER_LIST=order-1,order-2,order-3
+            - CATALOG_SERVER_LIST=catalog-1,catalog-2,catalog-3
+            - BOOTSTRAP_RAFT=true
+            - RUST_BACKTRACE=1
+        expose: 
+            - 34802
+            - 34803
+        ports:
+            - "34802:34802"
+    order-server-2:
+        image: "shisoft:pygmy-backend"
+        container_name: "order-2"
+        entrypoint: order-server
+        environment: 
+            - DATABASE_URL=db
+            - SERVER_ADDR=order-2
+            - ORDER_SERVER_LIST=order-1,order-2,order-3
+            - CATALOG_SERVER_LIST=catalog-1,catalog-2,catalog-3
+            - RUST_BACKTRACE=1
+        expose: 
+            - 34802
+            - 34803
+    order-server-3:
+        image: "shisoft:pygmy-backend"
+        container_name: "order-3"
+        entrypoint: order-server
+        environment: 
+            - DATABASE_URL=db
+            - SERVER_ADDR=order-3
+            - ORDER_SERVER_LIST=order-1,order-2,order-3
+            - CATALOG_SERVER_LIST=catalog-1,catalog-2,catalog-3
+            - RUST_BACKTRACE=1
+        expose: 
+            - 34802
+            - 34803
+
+    frontend:
+        image: "shisoft:pygmy-frontend"
+        container_name: "fontend"
+        environment: 
+            - CATALOG_SERVER_LIST=catalog-1,catalog-2,catalog-3
+            - ORDER_SERVER_LIST=order-1,order-2,order-3
+            - RUST_BACKTRACE=1
+        expose: 
+            - 34800
+
+        ports:
+            - "34800:34800"
