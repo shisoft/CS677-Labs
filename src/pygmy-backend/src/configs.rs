@@ -2,6 +2,7 @@ use std::env;
 use bifrost::rpc::Server;
 use bifrost::raft::*;
 use bifrost::raft::state_machine::master::SubStateMachine;
+use bifrost::raft::disk::DiskOptions;
 
 // Preload all configurations from environment variable
 lazy_static! {
@@ -43,7 +44,14 @@ lazy_static! {
 pub async fn start_raft_state_machine(state_machine: SubStateMachine, server_list: &Vec<String>) {
     let raft_addr = format!("{}:{}", *SERVER_ADDR, *RAFT_SERVER_PORT);
     let raft_service = RaftService::new(Options {
-        storage: Storage::default(),
+        storage: Storage::DISK(
+            DiskOptions {
+                path: "raft-logs".to_string(),
+                take_snapshots: false,
+                append_logs: true,
+                trim_logs: false
+            }
+        ),
         address: raft_addr.clone(),
         service_id: DEFAULT_SERVICE_ID,
     });

@@ -8,6 +8,7 @@ services:
             - DATABASE_URL=db
             - SERVER_ADDR=catalog-1
             - CATALOG_SERVER_LIST=catalog-1,catalog-2,catalog-3
+            - FRONTEND_SERVER_ADDR=fontend:34800
             - BOOTSTRAP_RAFT=true
             - RUST_BACKTRACE=1
         expose: 
@@ -24,6 +25,7 @@ services:
             - DATABASE_URL=db
             - SERVER_ADDR=catalog-2
             - CATALOG_SERVER_LIST=catalog-1,catalog-2,catalog-3
+            - FRONTEND_SERVER_ADDR=fontend:34800
             - RUST_BACKTRACE=1
         expose: 
             - 34801
@@ -37,6 +39,7 @@ services:
             - DATABASE_URL=db
             - SERVER_ADDR=catalog-3
             - CATALOG_SERVER_LIST=catalog-1,catalog-2,catalog-3
+            - FRONTEND_SERVER_ADDR=fontend:34800
             - RUST_BACKTRACE=1
         expose: 
             - 34801

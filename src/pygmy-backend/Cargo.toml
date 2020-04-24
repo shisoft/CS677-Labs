@@ -27,15 +27,15 @@ features = ["json"]
 # Here we use a framework from Hao Shi for replicated state machine
 [dependencies.bifrost]
 git = "https://github.com/ShisoftResearch/bifrost.git"
-rev = "06922138fade8347cce4406232c250f4f7d3ca90"
+rev = "ca85b0b617dd0e4fb75e03ac7665451e9c3693b8"
 
 [dependencies.bifrost_plugins]
 git = "https://github.com/ShisoftResearch/bifrost.git"
-rev = "06922138fade8347cce4406232c250f4f7d3ca90"
+rev = "ca85b0b617dd0e4fb75e03ac7665451e9c3693b8"
 
 [dependencies.bifrost_hasher]
 git = "https://github.com/ShisoftResearch/bifrost.git"
-rev = "06922138fade8347cce4406232c250f4f7d3ca90"
+rev = "ca85b0b617dd0e4fb75e03ac7665451e9c3693b8"
 
 [[bin]]
 name = "catalog-server"

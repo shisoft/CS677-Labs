@@ -12,16 +12,15 @@ extern crate log;
 
 use crate::configs::*;
 use crate::data::establish_connection;
-use crate::models::{Item, LookupRes, NewOrder, Order, Topic};
+use crate::models::{Item, LookupRes, NewOrder};
 use actix_web::middleware::Logger;
-use actix_web::web::{Json, Query};
+use actix_web::web::{Query};
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use bifrost::raft;
 use bifrost::raft::client::RaftClient;
 use bifrost::raft::state_machine::StateMachineCtl;
 use bifrost::raft::*;
 use diesel::prelude::*;
-use dotenv::dotenv;
 use future::FutureExt;
 use log::*;
 use serde::Deserialize;
@@ -83,7 +82,7 @@ lazy_static! {
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
     // Initialize logger
-    simple_logger::init_with_level(Level::Debug);
+    simple_logger::init_with_level(Level::Debug).unwrap();
 
     info!("Running Order server");
     // Initialize raft server and their service
