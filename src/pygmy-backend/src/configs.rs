@@ -71,7 +71,7 @@ pub async fn start_raft_state_machine(state_machine: SubStateMachine, server_lis
     debug!("Server list: {:?}", server_list);
     if *BOOTSTRAP_RAFT {
         debug!("Will bootstrap");
-        raft_service.bootstrap().await;
+        raft_service.conservative_bootstrap(server_list).await;
     } else {
         debug!("Will join server list");
         raft_service.join(server_list).await.unwrap();

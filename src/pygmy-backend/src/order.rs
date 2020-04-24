@@ -149,10 +149,12 @@ async fn order_handler(req: HttpRequest) -> impl Responder {
 
 async fn log_order(item_id: i32, num_amount: i32, total_sum: f32) {
     // Invoke the state machine, like a RPC call
-    SM_CLIENT
-        .log_order(&item_id, &num_amount, &total_sum)
-        .await
-        .unwrap()
+    tokio::spawn(async move {
+        SM_CLIENT
+            .log_order(&item_id, &num_amount, &total_sum)
+            .await
+            .unwrap()
+    }).await;
 }
 
 impl StateMachineCtl for ReplicatedOrderLog {
