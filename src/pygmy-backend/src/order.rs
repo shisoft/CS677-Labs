@@ -6,7 +6,6 @@ extern crate diesel;
 extern crate lazy_static;
 #[macro_use]
 extern crate bifrost;
-extern crate dotenv;
 #[macro_use]
 extern crate log;
 
@@ -73,7 +72,7 @@ lazy_static! {
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
     // Initialize configure reader
-    dotenv().ok();
+    dotenv::dotenv().ok();
     // Initialize logger
     simple_logger::init_with_level(Level::Debug).unwrap();
 
