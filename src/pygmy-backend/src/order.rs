@@ -72,6 +72,8 @@ lazy_static! {
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
+    // Initialize configure reader
+    dotenv().ok();
     // Initialize logger
     simple_logger::init_with_level(Level::Debug).unwrap();
 

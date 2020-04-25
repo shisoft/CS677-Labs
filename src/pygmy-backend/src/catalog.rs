@@ -167,6 +167,8 @@ lazy_static! {
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
+    // Initialize configure reader
+    dotenv().ok();
     // Initialize logger
     simple_logger::init_with_level(Level::Debug);
     info!("Running Catalog server");
@@ -239,6 +241,7 @@ async fn update_stock(req: HttpRequest) -> impl Responder {
 }
 
 async fn invalidate_frontend_item_cache(item_id: i32) {
+    // Send invalidate message to front end server
     let url = format!("http://{}/invalidate/item/{}", *FRONTEND_SERVER_ADDR, item_id);
     reqwest::Client::new()
         .post(&url)

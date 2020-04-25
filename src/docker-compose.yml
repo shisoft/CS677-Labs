@@ -1,7 +1,7 @@
 version: '3.6'
 services:
     catalog-server-1:
-        image: "shisoft:pygmy-backend"
+        image: "shisoft/pygmy-backend"
         container_name: "catalog-1"
         entrypoint: catalog-server
         environment: 
@@ -18,7 +18,7 @@ services:
             - "34801:34801"
 
     catalog-server-2:
-        image: "shisoft:pygmy-backend"
+        image: "shisoft/pygmy-backend"
         container_name: "catalog-2"
         entrypoint: catalog-server
         environment: 
@@ -32,7 +32,7 @@ services:
             - 34803
 
     catalog-server-3:
-        image: "shisoft:pygmy-backend"
+        image: "shisoft/pygmy-backend"
         container_name: "catalog-3"
         entrypoint: catalog-server
         environment: 
@@ -46,7 +46,7 @@ services:
             - 34803
     
     order-server-1:
-        image: "shisoft:pygmy-backend"
+        image: "shisoft/pygmy-backend"
         container_name: "order-1"
         entrypoint: order-server
         environment: 
@@ -62,7 +62,7 @@ services:
         ports:
             - "34802:34802"
     order-server-2:
-        image: "shisoft:pygmy-backend"
+        image: "shisoft/pygmy-backend"
         container_name: "order-2"
         entrypoint: order-server
         environment: 
@@ -75,7 +75,7 @@ services:
             - 34802
             - 34803
     order-server-3:
-        image: "shisoft:pygmy-backend"
+        image: "shisoft/pygmy-backend"
         container_name: "order-3"
         entrypoint: order-server
         environment: 
@@ -89,7 +89,7 @@ services:
             - 34803
 
     frontend:
-        image: "shisoft:pygmy-frontend"
+        image: "shisoft/pygmy-frontend"
         container_name: "fontend"
         environment: 
             - CATALOG_SERVER_LIST=catalog-1,catalog-2,catalog-3

@@ -114,18 +114,10 @@ async fn order_handler(req: HttpRequest) -> impl Responder {
     let item_id: i32 = req.match_info().get("id").unwrap().parse().unwrap();
     let query = Query::<QueryFormat>::from_query(req.query_string()).unwrap();
     let order_amount: i32 = if query.amount > 0 { query.amount } else { 1 };
-    let res = reqwest::Client::new()
-        .post(&format!(
-            "{}/order/{}?amount={}",
-            next_order_server(), item_id, order_amount
-        ))
-        .send()
-        .await
-        .unwrap()
-        .text()
-        .await
-        .unwrap();
-    response_with(Some(res))
+    let res = post_to_balanced_order(format!(
+            "order/{}?amount={}", item_id, order_amount
+        )).await;
+    response_with(res)
 }
 
 fn response_with(res_text: Option<String>) -> impl Responder {
@@ -175,6 +167,25 @@ async fn get_from_balanced_catalog(url_template: String) -> Option<String> {
         let url = format!("{}/{}", addr, url_template);
         debug!("Checking url ({}): {}", i, url);
         let res = reqwest::get(&url).await;
+        if !res.is_ok() {
+            continue
+        };
+        let res = res.unwrap().text().await;
+        if !res.is_ok() {
+            continue;
+        }
+        return Some(res.unwrap());
+    }
+    None
+}
+
+async fn post_to_balanced_order(url_template: String) -> Option<String> {
+    let remains = CAT_SERVER_ADDRS.len();
+    for i in 0..remains {
+        let addr = next_order_server();
+        let url = format!("{}/{}", addr, url_template);
+        debug!("Checking url ({}): {}", i, url);
+        let res = reqwest::Client::new().post(&url).send().await;
         if !res.is_ok() {
             continue
         };
