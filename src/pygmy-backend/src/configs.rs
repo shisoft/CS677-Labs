@@ -1,8 +1,8 @@
-use std::env;
-use bifrost::rpc::Server;
-use bifrost::raft::*;
-use bifrost::raft::state_machine::master::SubStateMachine;
 use bifrost::raft::disk::DiskOptions;
+use bifrost::raft::state_machine::master::SubStateMachine;
+use bifrost::raft::*;
+use bifrost::rpc::Server;
+use std::env;
 
 // Preload all configurations from environment variable
 lazy_static! {
@@ -13,8 +13,8 @@ lazy_static! {
     pub static ref RAFT_SERVER_PORT: String =
         env::var("RAFT_SERVER_PORT").unwrap_or("34803".to_string());
     pub static ref SERVER_ADDR: String = env::var("SERVER_ADDR").unwrap_or("127.0.0.1".to_string());
-    pub static ref FRONTEND_SERVER_ADDR: String = env::var("FRONTEND_SERVER_ADDR")
-        .unwrap_or("127.0.0.1:34800".to_string());
+    pub static ref FRONTEND_SERVER_ADDR: String =
+        env::var("FRONTEND_SERVER_ADDR").unwrap_or("127.0.0.1:34800".to_string());
     pub static ref CATALOG_SERVER_LIST: Vec<String> = env::var("CATALOG_SERVER_LIST")
         .unwrap_or("127.0.0.1".to_string())
         .split(",")
@@ -25,33 +25,33 @@ lazy_static! {
         .split(",")
         .map(|s| s.trim().to_string())
         .collect();
-    pub static ref BOOTSTRAP_RAFT: bool =
-        env::var("BOOTSTRAP_RAFT").unwrap_or("".to_string()).to_lowercase() == "true";
-    pub static ref CATALOG_RAFT_SERVER_LIST: Vec<String> =
-        CATALOG_SERVER_LIST.iter().map(|addr| {
-            format!("{}:{}", addr, *RAFT_SERVER_PORT)
-        }).collect();
-    pub static ref ORDER_RAFT_SERVER_LIST: Vec<String> =
-        ORDER_SERVER_LIST.iter().map(|addr| {
-            format!("{}:{}", addr, *RAFT_SERVER_PORT)
-        }).collect();
-    pub static ref CATALOG_HTTP_SERVER_LIST: Vec<String> =
-        CATALOG_SERVER_LIST.iter().map(|addr| {
-            format!("http://{}:{}", addr, *CAT_SERVER_PORT)
-        }).collect();
+    pub static ref BOOTSTRAP_RAFT: bool = env::var("BOOTSTRAP_RAFT")
+        .unwrap_or("".to_string())
+        .to_lowercase()
+        == "true";
+    pub static ref CATALOG_RAFT_SERVER_LIST: Vec<String> = CATALOG_SERVER_LIST
+        .iter()
+        .map(|addr| { format!("{}:{}", addr, *RAFT_SERVER_PORT) })
+        .collect();
+    pub static ref ORDER_RAFT_SERVER_LIST: Vec<String> = ORDER_SERVER_LIST
+        .iter()
+        .map(|addr| { format!("{}:{}", addr, *RAFT_SERVER_PORT) })
+        .collect();
+    pub static ref CATALOG_HTTP_SERVER_LIST: Vec<String> = CATALOG_SERVER_LIST
+        .iter()
+        .map(|addr| { format!("http://{}:{}", addr, *CAT_SERVER_PORT) })
+        .collect();
 }
 
 pub async fn start_raft_state_machine(state_machine: SubStateMachine, server_list: &Vec<String>) {
     let raft_addr = format!("{}:{}", *SERVER_ADDR, *RAFT_SERVER_PORT);
     let raft_service = RaftService::new(Options {
-        storage: Storage::DISK(
-            DiskOptions {
-                path: "raft-logs".to_string(),
-                take_snapshots: false,
-                append_logs: true,
-                trim_logs: false
-            }
-        ),
+        storage: Storage::DISK(DiskOptions {
+            path: "raft-logs".to_string(),
+            take_snapshots: false,
+            append_logs: true,
+            trim_logs: false,
+        }),
         address: raft_addr.clone(),
         service_id: DEFAULT_SERVICE_ID,
     });

@@ -13,7 +13,7 @@ use crate::configs::*;
 use crate::data::establish_connection;
 use crate::models::{Item, LookupRes, NewOrder};
 use actix_web::middleware::Logger;
-use actix_web::web::{Query};
+use actix_web::web::Query;
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use bifrost::raft;
 use bifrost::raft::client::{CachedStateMachine, RaftClient};
@@ -21,10 +21,10 @@ use bifrost::raft::state_machine::StateMachineCtl;
 use bifrost::raft::*;
 use diesel::prelude::*;
 use future::FutureExt;
-use log::*;
-use serde::Deserialize;
-use serde::de::DeserializeOwned;
 use futures::executor::block_on;
+use log::*;
+use serde::de::DeserializeOwned;
+use serde::Deserialize;
 use std::sync::atomic::*;
 
 mod configs;
@@ -65,8 +65,11 @@ impl StateMachineCmds for ReplicatedOrderLog {
 }
 
 lazy_static! {
-    static ref SM_CLIENT: CachedStateMachine<client::SMClient> =
-        CachedStateMachine::new(&*ORDER_RAFT_SERVER_LIST, DEFAULT_SERVICE_ID, STATE_MACHINE_ID);
+    static ref SM_CLIENT: CachedStateMachine<client::SMClient> = CachedStateMachine::new(
+        &*ORDER_RAFT_SERVER_LIST,
+        DEFAULT_SERVICE_ID,
+        STATE_MACHINE_ID
+    );
 }
 
 #[actix_rt::main]
@@ -109,12 +112,19 @@ async fn order_handler(req: HttpRequest) -> impl Responder {
         item_id, order_amount
     );
     // First query the catalog server for item information and check stock
-    let cat_lookup: LookupRes<Item> = get_from_catalog_balanced(&format!("lookup/{}", item_id)).await.unwrap();
+    let cat_lookup: LookupRes<Item> = get_from_catalog_balanced(&format!("lookup/{}", item_id))
+        .await
+        .unwrap();
     if cat_lookup.ok {
         let lookup_item = cat_lookup.result.unwrap();
         info!("Found item {:?}, start transaction", lookup_item);
         if lookup_item.stock >= order_amount {
-            let update_res = post_to_catalog_balanced(&format!("update/{}/stock/deduct/{}", item_id, order_amount)).await.unwrap();
+            let update_res = post_to_catalog_balanced(&format!(
+                "update/{}/stock/deduct/{}",
+                item_id, order_amount
+            ))
+            .await
+            .unwrap();
             if update_res {
                 info!(
                     "Order transaction for {} successful, log transaction",
@@ -147,7 +157,8 @@ async fn log_order(item_id: i32, num_amount: i32, total_sum: f32) {
             .await
             .log_order(&item_id, &num_amount, &total_sum)
             .await
-    }).await;
+    })
+    .await;
 }
 
 impl StateMachineCtl for ReplicatedOrderLog {
@@ -180,7 +191,8 @@ fn next_catalog_server() -> &'static String {
 }
 
 async fn get_from_catalog_balanced<R>(url: &String) -> Option<R>
-    where R: DeserializeOwned
+where
+    R: DeserializeOwned,
 {
     for _ in 0..CATALOG_HTTP_SERVER_LIST.len() {
         let server = next_catalog_server();
@@ -200,7 +212,8 @@ async fn get_from_catalog_balanced<R>(url: &String) -> Option<R>
 }
 
 async fn post_to_catalog_balanced<R>(url: &String) -> Option<R>
-    where R: DeserializeOwned
+where
+    R: DeserializeOwned,
 {
     for _ in 0..CATALOG_HTTP_SERVER_LIST.len() {
         let server = next_catalog_server();

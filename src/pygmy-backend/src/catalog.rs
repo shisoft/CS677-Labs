@@ -25,11 +25,11 @@ use log::*;
 use std::collections::HashMap;
 
 use bifrost::raft;
+use bifrost::raft::client::{CachedStateMachine, RaftClient};
 use bifrost::raft::state_machine::StateMachineCtl;
 use bifrost::raft::*;
-use futures::FutureExt;
 use futures::executor::block_on;
-use bifrost::raft::client::{CachedStateMachine, RaftClient};
+use futures::FutureExt;
 
 struct ReplicatedCatalog;
 const STATE_MACHINE_ID: u64 = 50;
@@ -94,8 +94,8 @@ impl StateMachineCmds for ReplicatedCatalog {
                 .collect::<Vec<_>>()
                 .join(", ")
         ))
-            .load::<Item>(&establish_connection())
-            .unwrap();
+        .load::<Item>(&establish_connection())
+        .unwrap();
         // Compose a structure indicates the status of the result
         let mut res = LookupRes::from_lookup::<()>(Ok(items));
         // Provide topic name and it as one of the field in result because topic in item is topic id
@@ -160,8 +160,11 @@ impl StateMachineCmds for ReplicatedCatalog {
 }
 
 lazy_static! {
-    static ref SM_CLIENT: CachedStateMachine<client::SMClient> =
-        CachedStateMachine::new(&*CATALOG_RAFT_SERVER_LIST, DEFAULT_SERVICE_ID, STATE_MACHINE_ID);
+    static ref SM_CLIENT: CachedStateMachine<client::SMClient> = CachedStateMachine::new(
+        &*CATALOG_RAFT_SERVER_LIST,
+        DEFAULT_SERVICE_ID,
+        STATE_MACHINE_ID
+    );
 }
 
 #[actix_rt::main]
@@ -201,9 +204,8 @@ async fn main() -> std::io::Result<()> {
 async fn search_handler(req: HttpRequest) -> impl Responder {
     // Get topic string
     let topic_query = req.match_info().get("topic").unwrap_or("").to_string();
-    let task = tokio::spawn(async move {
-        SM_CLIENT.get().await.search(&topic_query).await.unwrap()
-    });
+    let task =
+        tokio::spawn(async move { SM_CLIENT.get().await.search(&topic_query).await.unwrap() });
     // Return the result to client in Json from state machine
     HttpResponse::Ok().json(task.await.unwrap())
 }
@@ -211,17 +213,13 @@ async fn search_handler(req: HttpRequest) -> impl Responder {
 async fn lookup_handler(req: HttpRequest) -> impl Responder {
     // Get item it from url
     let item_id: i32 = req.match_info().get("id").unwrap().parse().unwrap();
-    let task = tokio::spawn(async move {
-        SM_CLIENT.get().await.lookup(&item_id).await.unwrap()
-    });
+    let task = tokio::spawn(async move { SM_CLIENT.get().await.lookup(&item_id).await.unwrap() });
     // Return the result
     HttpResponse::Ok().json(task.await.unwrap())
 }
 
 async fn list_all(req: HttpRequest) -> impl Responder {
-    let task = tokio::spawn(async move {
-        SM_CLIENT.get().await.list_all().await.unwrap()
-    });
+    let task = tokio::spawn(async move { SM_CLIENT.get().await.list_all().await.unwrap() });
     HttpResponse::Ok().json(task.await.unwrap())
 }
 
@@ -230,7 +228,12 @@ async fn update_stock(req: HttpRequest) -> impl Responder {
     let item_id: i32 = req.match_info().get("id").unwrap().parse().unwrap();
     let stock_deduct: i32 = req.match_info().get("stock").unwrap().parse().unwrap();
     let task = tokio::spawn(async move {
-        SM_CLIENT.get().await.update_stock_deduct(&item_id, &stock_deduct).await.unwrap()
+        SM_CLIENT
+            .get()
+            .await
+            .update_stock_deduct(&item_id, &stock_deduct)
+            .await
+            .unwrap()
     });
     let res: bool = task.await.unwrap();
     if res {
@@ -241,7 +244,10 @@ async fn update_stock(req: HttpRequest) -> impl Responder {
 
 async fn invalidate_frontend_item_cache(item_id: i32) {
     // Send invalidate message to front end server
-    let url = format!("http://{}/invalidate/item/{}", *FRONTEND_SERVER_ADDR, item_id);
+    let url = format!(
+        "http://{}/invalidate/item/{}",
+        *FRONTEND_SERVER_ADDR, item_id
+    );
     reqwest::Client::new()
         .post(&url)
         .send()
