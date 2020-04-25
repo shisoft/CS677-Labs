@@ -1,5 +1,6 @@
 # Outputs
 Following content contains output from the client, frontend server, catalog server and order server.
+Note that because the fontend interfaces have not been changed, Client output is identical with Lab 2.
 ## Client
 ```
 /Users/shisoft/Dropbox/Homeworks/CS677/lab-2-huang-shi/tests/pygmy-client/target/debug/pygmy-client http://localhost:34800
