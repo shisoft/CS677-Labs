@@ -17,7 +17,7 @@ use actix_web::middleware::Logger;
 use actix_web::web::{Query};
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use bifrost::raft;
-use bifrost::raft::client::RaftClient;
+use bifrost::raft::client::{CachedStateMachine, RaftClient};
 use bifrost::raft::state_machine::StateMachineCtl;
 use bifrost::raft::*;
 use diesel::prelude::*;
@@ -66,17 +66,8 @@ impl StateMachineCmds for ReplicatedOrderLog {
 }
 
 lazy_static! {
-    static ref SM_CLIENT: client::SMClient = {
-        debug!("Construct state machine client from {:?}", &*ORDER_RAFT_SERVER_LIST);
-        block_on(async {
-            // Create a client for raft service
-            let raft_client = RaftClient::new(&*ORDER_RAFT_SERVER_LIST, DEFAULT_SERVICE_ID)
-                .await
-                .unwrap();
-            // Create a client for the state machine on the raft service
-            client::SMClient::new(STATE_MACHINE_ID, &raft_client)
-        })
-    };
+    static ref SM_CLIENT: CachedStateMachine<client::SMClient> =
+        CachedStateMachine::new(&*ORDER_RAFT_SERVER_LIST, DEFAULT_SERVICE_ID, STATE_MACHINE_ID);
 }
 
 #[actix_rt::main]
@@ -151,9 +142,10 @@ async fn log_order(item_id: i32, num_amount: i32, total_sum: f32) {
     // Invoke the state machine, like a RPC call
     tokio::spawn(async move {
         SM_CLIENT
+            .get()
+            .await
             .log_order(&item_id, &num_amount, &total_sum)
             .await
-            .unwrap()
     }).await;
 }
 
