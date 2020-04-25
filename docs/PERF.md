@@ -1,8 +1,12 @@
 # Performance Test
-Here we will test performance in term of response time. In this test, servers are on the same node to avoid influences from hardware. Every endpoint will run 10k times and 2 concurrent threads.
-For microservices, response time impact performance because a lower level component can really slow down the whole system. From the result we have so far, response time is low enough to complete 10k requests in less than 30 seconds. Note that in average, lower level component have less response time than end-to-end.
+Here we will test performance in term of response time. In this test, servers are on the same node with the help of `docker-compose` to avoid influences from hardware. Every endpoint will run 10k times and 2 concurrent threads.
+
+We can see that end-to-end total time and average time is shorter than invoking the backend server directly. This is because these request results are cached in the frontend server, but backend server need to confirm the data it got from the Raft state machine is new, to prevent stale. On cache hit, frontend only need to get the data it last seen from the cache and send to end users.
 
 ## End-to-end
+
+With command `./tests/perf/welle -n 10000 -c 2 http://localhost:34800/...`
+
 ### /lookup
 ```
 Total Requests: 10000
@@ -11,20 +15,20 @@ Total Completed Requests: 10000
 Total Errored Requests: 0
 Total 5XX Requests: 0
 
-Total Time Taken: 23.152702378s
-Avg Time Taken: 2.31527ms
-Total Time In Flight: 45.557307057s
-Avg Time In Flight: 4.55573ms
+Total Time Taken: 928.910773ms
+Avg Time Taken: 92.891µs
+Total Time In Flight: 1.526589204s
+Avg Time In Flight: 152.658µs
 
 Percentage of the requests served within a certain time:
-50%: 5.105345ms
-66%: 6.127282ms
-75%: 7.302952ms
-80%: 8.811533ms
-90%: 12.563581ms
-95%: 14.619875ms
-99%: 19.503072ms
-100%: 738.596808ms
+50%: 221.342µs
+66%: 236.235µs
+75%: 245.833µs
+80%: 251.799µs
+90%: 268.09µs
+95%: 281.406µs
+99%: 312.514µs
+100%: 13.374458ms
 ```
 
 ### /lookup/1
@@ -35,20 +39,20 @@ Total Completed Requests: 10000
 Total Errored Requests: 0
 Total 5XX Requests: 0
 
-Total Time Taken: 20.962293936s
-Avg Time Taken: 2.096229ms
-Total Time In Flight: 41.16806842s
-Avg Time In Flight: 4.116806ms
+Total Time Taken: 915.385169ms
+Avg Time Taken: 91.538µs
+Total Time In Flight: 1.498144494s
+Avg Time In Flight: 149.814µs
 
 Percentage of the requests served within a certain time:
-50%: 4.536901ms
-66%: 5.517902ms
-75%: 6.614303ms
-80%: 8.254468ms
-90%: 12.00563ms
-95%: 13.6712ms
-99%: 19.844407ms
-100%: 73.076806ms
+50%: 215.838µs
+66%: 229.617µs
+75%: 239.993µs
+80%: 245.998µs
+90%: 264.369µs
+95%: 282.112µs
+99%: 319.177µs
+100%: 12.023352ms
 ```
 
 ### /search/sys
@@ -59,23 +63,26 @@ Total Completed Requests: 10000
 Total Errored Requests: 0
 Total 5XX Requests: 0
 
-Total Time Taken: 21.800157177s
-Avg Time Taken: 2.180015ms
-Total Time In Flight: 42.840328194s
-Avg Time In Flight: 4.284032ms
+Total Time Taken: 905.60481ms
+Avg Time Taken: 90.56µs
+Total Time In Flight: 1.45751483s
+Avg Time In Flight: 145.751µs
 
 Percentage of the requests served within a certain time:
-50%: 4.863097ms
-66%: 5.834392ms
-75%: 6.89146ms
-80%: 8.328634ms
-90%: 12.300946ms
-95%: 14.35856ms
-99%: 19.226818ms
-100%: 241.189939ms
+50%: 212.702µs
+66%: 224.423µs
+75%: 233.155µs
+80%: 239.236µs
+90%: 257.085µs
+95%: 272.028µs
+99%: 305.832µs
+100%: 3.577809ms
 ```
 
 ## Catalog Server
+
+With `./tests/perf/welle -n 10000 -c 2 http://localhost:34801/`
+
 ### /lookup
 ```
 Total Requests: 10000
@@ -84,20 +91,20 @@ Total Completed Requests: 10000
 Total Errored Requests: 0
 Total 5XX Requests: 0
 
-Total Time Taken: 3.951041545s
-Avg Time Taken: 395.104µs
-Total Time In Flight: 7.370389127s
-Avg Time In Flight: 737.038µs
+Total Time Taken: 2.643955332s
+Avg Time Taken: 264.395µs
+Total Time In Flight: 4.958533787s
+Avg Time In Flight: 495.853µs
 
 Percentage of the requests served within a certain time:
-50%: 870.545µs
-66%: 970.788µs
-75%: 1.047408ms
-80%: 1.115115ms
-90%: 1.541698ms
-95%: 2.7268ms
-99%: 4.626301ms
-100%: 20.149187ms
+50%: 736.944µs
+66%: 755.054µs
+75%: 767.648µs
+80%: 776.785µs
+90%: 805.023µs
+95%: 838.662µs
+99%: 940.243µs
+100%: 1.966229ms
 ```
 
 ### /lookup/1
@@ -108,20 +115,20 @@ Total Completed Requests: 10000
 Total Errored Requests: 0
 Total 5XX Requests: 0
 
-Total Time Taken: 3.239684208s
-Avg Time Taken: 323.968µs
-Total Time In Flight: 6.027733874s
-Avg Time In Flight: 602.773µs
+Total Time Taken: 2.631342098s
+Avg Time Taken: 263.134µs
+Total Time In Flight: 4.918096042s
+Avg Time In Flight: 491.809µs
 
 Percentage of the requests served within a certain time:
-50%: 823.419µs
-66%: 902.062µs
-75%: 961.686µs
-80%: 1.002449ms
-90%: 1.170469ms
-95%: 1.413566ms
-99%: 2.348526ms
-100%: 3.735492ms
+50%: 727.647µs
+66%: 747.59µs
+75%: 762.358µs
+80%: 772.086µs
+90%: 802.99µs
+95%: 857.502µs
+99%: 948.413µs
+100%: 2.035809ms
 ```
 
 ### /search/sys
@@ -132,18 +139,18 @@ Total Completed Requests: 10000
 Total Errored Requests: 0
 Total 5XX Requests: 0
 
-Total Time Taken: 3.338709528s
-Avg Time Taken: 333.87µs
-Total Time In Flight: 6.217127696s
-Avg Time In Flight: 621.712µs
+Total Time Taken: 2.639603328s
+Avg Time Taken: 263.96µs
+Total Time In Flight: 4.934475313s
+Avg Time In Flight: 493.447µs
 
 Percentage of the requests served within a certain time:
-50%: 841.223µs
-66%: 916.932µs
-75%: 985.33µs
-80%: 1.036777ms
-90%: 1.231422ms
-95%: 1.493891ms
-99%: 2.467146ms
-100%: 3.184704ms
+50%: 732.226µs
+66%: 750.791µs
+75%: 762.303µs
+80%: 770.283µs
+90%: 793.351µs
+95%: 815.939µs
+99%: 955.838µs
+100%: 2.101583ms
 ```

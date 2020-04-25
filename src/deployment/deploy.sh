@@ -27,7 +27,7 @@ echo "SERVER_ADDR=$SERVER_3" >> .env
 rsync -avI ./ $DEPLOY_USER@$ORDER_SERVER:$REMOTE_DIR
 
 echo "Running server 1 on $SERVER_1"
-ssh $DEPLOY_USER@$FRONTEND_SERVER "/bin/sh -c 'cd $REMOTE_DIR && chmod +x ./pygmy-frontend && ./pygmy-frontend > frontend.log &'"
+ssh $DEPLOY_USER@$SERVER_1 "/bin/sh -c 'cd $REMOTE_DIR && chmod +x ./pygmy-frontend && ./pygmy-frontend > frontend.log &'"
 ssh $DEPLOY_USER@$SERVER_1 "/bin/sh -c 'cd $REMOTE_DIR && chmod +x ./catalog-server && ./catalog-server > catalog.log &'"
 ssh $DEPLOY_USER@$SERVER_1 "/bin/sh -c 'cd $REMOTE_DIR && chmod +x ./order-server && ./order-server > order.log &'"
 
