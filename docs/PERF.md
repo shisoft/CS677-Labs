@@ -1,7 +1,7 @@
 # Performance Test
 Here we will test performance in term of response time. In this test, servers are on the same node with the help of `docker-compose` to avoid influences from hardware. Every endpoint will run 10k times and 2 concurrent threads.
 
-We can see that end-to-end total time and average time is shorter than invoking the backend server directly. This is because these request results are cached in the frontend server, but backend server need to confirm the data it got from the Raft state machine is new, to prevent stale. On cache hit, frontend only need to get the data it last seen from the cache and send to end users.
+We can see that end-to-end total time and average time is shorter than invoking the backend server directly by 1/4. This is because these request results are cached in the frontend server, but backend server need to confirm the data it got from the Raft state machine is new, to prevent stale. On cache hit, frontend only need to get the data it last seen from the cache and send to end users.
 
 ## End-to-end
 
